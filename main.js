@@ -13,7 +13,9 @@
         lastFrameTimestamp = timeStamp;
         // Interpolate state updates
         while (timeDelta >= TIMESTEP) {
-            updateState(TIMESTEP);
+            for (entIndex = 0; entIndex < entities.length; entIndex++) {
+                entities[entIndex].updateState(TIMESTEP);
+            }
             timeDelta -= TIMESTEP;
         }
         // Drawing
@@ -22,39 +24,6 @@
             entities[entIndex].draw();
         }
         requestAnimationFrame(mainLoop);
-    };
-    function updateState(delta) {
-        /*
-        To ensure proper collision, the minimum dimension of an object must be
-        vmax x dt (pixels)
-        
-        vmax = highest velocity that the fastest object can travel
-        dt = the parameter "delta"
-        */
-        playerRef.angle += playerRef.angleDelta * delta;
-        if (playerRef.throttle) {
-            playerRef.xVelDelta = .0003 * Math.cos(playerRef.angle + Math.PI / 2);
-            playerRef.yVelDelta = .0003 * Math.sin(-(playerRef.angle + Math.PI / 2));
-        } else {
-            playerRef.xVelDelta = playerRef.yVelDelta = 0;
-        }
-        // Velocity is in units of pixels per millisecond.
-        playerRef.xVel += playerRef.xVelDelta * delta;
-        playerRef.yVel += playerRef.yVelDelta * delta;
-        if (playerRef.xVel > playerRef.maxVel) {
-            playerRef.xVel = playerRef.maxVel;
-        }
-        if (playerRef.yVel > playerRef.maxVel) {
-            playerRef.yVel = playerRef.maxVel;
-        }
-        if (playerRef.xVel < -playerRef.maxVel) {
-            playerRef.xVel = -playerRef.maxVel;
-        }
-        if (playerRef.yVel < -playerRef.maxVel) {
-            playerRef.yVel = -playerRef.maxVel;
-        }
-        playerRef.x += playerRef.xVel * delta;
-        playerRef.y += playerRef.yVel * delta;
     };
     function keyDownHandler(e) {
         switch(e.keyCode) {
@@ -84,6 +53,9 @@
                 break;
         }
     };
+    function distance(x1, y1, x2, y2) {
+        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    };
     // Objects
     function Player() {};
     Player.prototype = {
@@ -97,6 +69,55 @@
         angleDelta: 0,
         maxVel: .3,
         throttle: false,
+        collisionRadius: 15,
+        updateState: function(delta) {
+            var entIndex;
+            var other;
+            
+            this.angle += this.angleDelta * delta;
+            if (this.throttle) {
+                this.xVelDelta = .0003 * Math.cos(this.angle + Math.PI / 2);
+                this.yVelDelta = .0003 * Math.sin(-(this.angle + Math.PI / 2));
+            } else {
+                this.xVelDelta = this.yVelDelta = 0;
+            }
+            // Velocity is in units of pixels per millisecond.
+            this.xVel += this.xVelDelta * delta;
+            this.yVel += this.yVelDelta * delta;
+            if (this.xVel > this.maxVel) {
+                this.xVel = this.maxVel;
+            }
+            if (this.yVel > this.maxVel) {
+                this.yVel = this.maxVel;
+            }
+            if (this.xVel < -this.maxVel) {
+                this.xVel = -this.maxVel;
+            }
+            if (this.yVel < -this.maxVel) {
+                this.yVel = -this.maxVel;
+            }
+            this.x += this.xVel * delta;
+            this.y += this.yVel * delta;
+            // collision
+            for (entIndex = 1; entIndex < entities.length; entIndex++) {
+                other = entities[entIndex];
+                if (
+                    // within collision radius of other entity
+                    distance(this.x + this.collisionRadius,
+                             this.y + this.collisionRadius,
+                             other.x + other.collisionRadius,
+                             other.y + other.collisionRadius) <= other.collisionRadius &&
+                    // headed towards the other entity
+                    distance(this.x + this.xVel * other.collisionRadius,
+                             this.y + this.yVel * other.collisionRadius,
+                             other.x + other.collisionRadius,
+                             other.y + other.collisionRadius) <= other.collisionRadius
+                    ) {
+                    this.xVel = -this.xVel;
+                    this.yVel = -this.yVel;
+                }
+            }
+        },
         draw: function() {
             var radius = 15;
             var xCenter = CANVAS.width / 2;
@@ -114,26 +135,62 @@
             CTX.fill();
         }
     };
-    function Asteroid(x, y) {
+    function Asteroid(x, y, img) {
         this.x = x;
         this.y = y;
+        this.image = img;
     };
     Asteroid.prototype = {
         x: 0,
         y: 0,
+        image: "",
+        updateState: function () {
+            var test = Asteroid.prototype.collisionLines;
+        },
         draw: function () {
-            var img = document.getElementById("asteroid1");
-            
-            CTX.drawImage(img, CANVAS.width / 2 + (this.x - playerRef.x),
+            CTX.drawImage(document.getElementById(this.image),
+                CANVAS.width / 2 + (this.x - playerRef.x),
                 CANVAS.height / 2 + (this.y - playerRef.y));
         }
     };
+    // Collision detectors
+    document.addEventListener("DOMContentLoaded", function () {
+        var pData;
+        var pIndX;
+        var pIndY;
+        var pOffset;
+        
+        CTX.drawImage(document.getElementById("asteroid1"), 0, 0);
+        pData = CTX.getImageData(0, 0, 60, 60);
+        // Every 2 entries is the beginning and ending point of a horizontal line
+        Asteroid.prototype.collisionLines = [];
+        for (pIndY = 0; pIndY < 60; pIndY++) {
+            // Left X
+            for (pIndX = 0; pIndX < 60; pIndX++) {
+                pOffset = (pIndY * 4 * 60) + pIndX * 4;
+                // detect non-black pixels
+                if (pData[pOffset] | pData[pOffset + 1] | pData[pOffset + 2] != 0) {
+                    Asteroid.prototype.collisionLines.push(pOffset / 4);
+                    break;
+                }
+            }
+            // Right X
+            for (pIndX = 59; pIndX >= 0; pIndX--) {
+                pOffset = (pIndY * 4 * 60) + pIndX * 4;
+                // detect non-black pixels
+                if (pData[pOffset] | pData[pOffset + 1] | pData[pOffset + 2] != 0) {
+                    Asteroid.prototype.collisionLines.push(pOffset / 4);
+                    break;
+                }
+            }
+        }
+    });
     
     // Setup
-    document.onkeydown = keyDownHandler;
-    document.onkeyup = keyUpHandler;
     playerRef = new Player();
     entities.push(playerRef);
-    entities.push(new Asteroid(200, 200));
+    entities.push(new Asteroid(150, 150, "asteroid1"));
+    document.onkeydown = keyDownHandler;
+    document.onkeyup = keyUpHandler;
     requestAnimationFrame(mainLoop); // Begin loop
 }());
