@@ -159,31 +159,43 @@
         var pIndX;
         var pIndY;
         var pOffset;
+        var imgWidth;
+        var imgHeight;
+        var imgID;
+        var obj;
+        function  createCollisionLines(obj, id, w, h) {
+            CTX.drawImage(document.getElementById("asteroid1"), 0, 0);
+            pData = CTX.getImageData(0, 0, w, h);
+            // Every 2 entries is the beginning and ending point of a horizontal line
+            obj.prototype.collisionLines = [];
+            for (pIndY = 0; pIndY < h; pIndY++) {
+                // Left X
+                for (pIndX = 0; pIndX < w; pIndX++) {
+                    pOffset = (pIndY * 4 * w) + pIndX * 4;
+                    // detect non-black pixels
+                    if (pData.data[pOffset] | pData.data[pOffset + 1] | pData.data[pOffset + 2] != 0) {
+                        obj.prototype.collisionLines.push(pIndX);
+                        break;
+                    }
+                }
+                // Right X
+                for (pIndX = w - 1; pIndX >= 0; pIndX--) {
+                    pOffset = (pIndY * 4 * w) + pIndX * 4;
+                    if (pData.data[pOffset] | pData.data[pOffset + 1] | pData.data[pOffset + 2] != 0) {
+                        obj.prototype.collisionLines.push(pIndX);
+                        break;
+                    }
+                }
+            }
+        };
         
-        CTX.drawImage(document.getElementById("asteroid1"), 0, 0);
-        pData = CTX.getImageData(0, 0, 60, 60);
-        // Every 2 entries is the beginning and ending point of a horizontal line
-        Asteroid.prototype.collisionLines = [];
-        for (pIndY = 0; pIndY < 60; pIndY++) {
-            // Left X
-            for (pIndX = 0; pIndX < 60; pIndX++) {
-                pOffset = (pIndY * 4 * 60) + pIndX * 4;
-                // detect non-black pixels
-                if (pData[pOffset] | pData[pOffset + 1] | pData[pOffset + 2] != 0) {
-                    Asteroid.prototype.collisionLines.push(pOffset / 4);
-                    break;
-                }
-            }
-            // Right X
-            for (pIndX = 59; pIndX >= 0; pIndX--) {
-                pOffset = (pIndY * 4 * 60) + pIndX * 4;
-                // detect non-black pixels
-                if (pData[pOffset] | pData[pOffset + 1] | pData[pOffset + 2] != 0) {
-                    Asteroid.prototype.collisionLines.push(pOffset / 4);
-                    break;
-                }
-            }
-        }
+        imgWidth = 60;
+        imgHeight = 50;
+        imgID = "asteroid1";
+        obj = Asteroid;
+        requestAnimationFrame(function () {
+            createCollisionLines(obj, imgID, imgWidth, imgHeight);
+        });
     });
     
     // Setup
