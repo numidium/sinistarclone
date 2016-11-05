@@ -73,6 +73,7 @@
         updateState: function(delta) {
             var entIndex;
             var other;
+            var lineInd;
             
             this.angle += this.angleDelta * delta;
             if (this.throttle) {
@@ -101,20 +102,13 @@
             // collision
             for (entIndex = 1; entIndex < entities.length; entIndex++) {
                 other = entities[entIndex];
-                if (
-                    // within collision radius of other entity
-                    distance(this.x + this.collisionRadius,
-                             this.y + this.collisionRadius,
-                             other.x + other.collisionRadius,
-                             other.y + other.collisionRadius) <= other.collisionRadius &&
-                    // headed towards the other entity
-                    distance(this.x + this.xVel * other.collisionRadius,
-                             this.y + this.yVel * other.collisionRadius,
-                             other.x + other.collisionRadius,
-                             other.y + other.collisionRadius) <= other.collisionRadius
-                    ) {
-                    this.xVel = -this.xVel;
-                    this.yVel = -this.yVel;
+                // collision circle is within top and bottom collision lines
+                if (this.y + this.collisionRadius > other.y &&
+                    this.y - this.collisionRadius < other.y + other.height) {
+                    // check for meeting points against either end of each line
+                    for (lineInd = 0; lineInd < other.collisionLines.length; lineInd++) {
+                        // TODO: add collision logic
+                    }
                 }
             }
         },
@@ -141,11 +135,13 @@
         this.image = img;
     };
     Asteroid.prototype = {
+        constructor: Asteroid,
         x: 0,
         y: 0,
-        image: "",
+        image: "asteroid1",
+        imgWidth: 60,
+        imgHeight: 50,
         updateState: function () {
-            var test = Asteroid.prototype.collisionLines;
         },
         draw: function () {
             CTX.drawImage(document.getElementById(this.image),
@@ -163,8 +159,8 @@
         var imgHeight;
         var imgID;
         var obj;
-        function  createCollisionLines(obj, id, w, h) {
-            CTX.drawImage(document.getElementById("asteroid1"), 0, 0);
+        function createCollisionLines(obj, id, w, h) {
+            CTX.drawImage(document.getElementById(obj.image), 0, 0);
             pData = CTX.getImageData(0, 0, w, h);
             // Every 2 entries is the beginning and ending point of a horizontal line
             obj.prototype.collisionLines = [];
@@ -193,9 +189,7 @@
         imgHeight = 50;
         imgID = "asteroid1";
         obj = Asteroid;
-        requestAnimationFrame(function () {
-            createCollisionLines(obj, imgID, imgWidth, imgHeight);
-        });
+        createCollisionLines(obj, imgID, imgWidth, imgHeight);
     });
     
     // Setup
