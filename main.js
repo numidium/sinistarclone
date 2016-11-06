@@ -74,6 +74,9 @@
             var entIndex;
             var other;
             var lineInd;
+            var collX1;
+            var collX2;
+            var collY;
             
             this.angle += this.angleDelta * delta;
             if (this.throttle) {
@@ -104,10 +107,20 @@
                 other = entities[entIndex];
                 // collision circle is within top and bottom collision lines
                 if (this.y + this.collisionRadius > other.y &&
-                    this.y - this.collisionRadius < other.y + other.height) {
+                    this.y - this.collisionRadius < other.y + other.imgHeight) {
                     // check for meeting points against either end of each line
-                    for (lineInd = 0; lineInd < other.collisionLines.length; lineInd++) {
-                        // TODO: add collision logic
+                    for (lineInd = 0; lineInd < other.collisionLines.length; lineInd += 2) {
+                        collX1 = other.x + other.collisionLines[lineInd];
+                        collX2 = other.x + other.collisionLines[lineInd + 1];
+                        collY = other.y + (lineInd / 2);
+                        if (distance(this.x, this.y, collX1, collY) <= this.collisionRadius ||
+                            distance(this.x, this.y, collX2, collY) <= this.collisionRadius) {
+                            this.xVel = -this.xVel;
+                            this.yVel = -this.yVel;
+                            // bounce away cleanly
+                            this.x += this.xVel * delta;
+                            this.y += this.yVel * delta;
+                        }
                     }
                 }
             }
@@ -160,7 +173,7 @@
         var imgID;
         var obj;
         function createCollisionLines(obj, id, w, h) {
-            CTX.drawImage(document.getElementById(obj.image), 0, 0);
+            CTX.drawImage(document.getElementById(obj.prototype.image), 0, 0);
             pData = CTX.getImageData(0, 0, w, h);
             // Every 2 entries is the beginning and ending point of a horizontal line
             obj.prototype.collisionLines = [];
