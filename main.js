@@ -56,7 +56,7 @@
     function distance(x0, y0, x1, y1) {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     };
-	function lineCheck(x0, y0, x1, y1, otherX, otherY) {
+	function lineCheck(x0, y0, x1, y1, otherX1, otherX2, otherY) {
 		// Trace along a line with Bresenham
 		var _x0 = Math.round(x0);
 		var _y0 = Math.round(y0);
@@ -69,8 +69,8 @@
 		var error = dx - dy;
 		var error2;
 		
-		// Triangle is touching collision point
-		if ((Math.abs(_x0 - otherX) <= 1 && Math.abs(_y0 - otherY) <= 1)) {
+		// Triangle is touching a collision line
+		if (Math.abs(_y0 - otherY) <= 1 && _x0 >= otherX1 && _x0 <= otherX2) {
 			return true;
 		}
 		while (Math.abs(_x0 - _x1) > 1 || Math.abs(_y0 - _y1) > 1) {
@@ -84,14 +84,14 @@
 				_y0 += sy;
 			}
 			// Triangle is touching collision point
-			if (Math.abs(_x0 - otherX) <= 1 && Math.abs(_y0 - otherY) <= 1) {
+			if (Math.abs(_y0 - otherY) <= 1 && _x0 >= otherX1 && _x0 <= otherX2) {
 				return true;
 			}
 		}
 		
 		return false;
 	};
-	function triangleEdgeCheck(obj, otherX, otherY) {
+	function triangleEdgeCheck(obj, otherX1, otherX2, otherY) {
 		var points = [
 					obj.x + Math.cos(Math.PI / 2 + obj.angle) * obj.collRadius,
 					obj.y + Math.sin(-Math.PI / 2 - obj.angle) * obj.collRadius,
@@ -106,12 +106,12 @@
 		for (pointInd = 0; pointInd < 3; pointInd += 2) {	
 			if (lineCheck(points[pointInd], points[pointInd + 1],
 				points[pointInd + 2], points[pointInd + 3],
-				otherX, otherY)) {
+				otherX1, otherX2, otherY)) {
 				return true;
 			}
 		}
 		// Complete the triangle
-		if (lineCheck(points[4], points[5], points[0], points[1], otherX, otherY)) {
+		if (lineCheck(points[4], points[5], points[0], points[1], otherX1, otherX2, otherY)) {
 			return true;
 		}
 		
@@ -227,8 +227,7 @@
                         collX1 = other.x + other.collisionLines[lineInd];
                         collX2 = other.x + other.collisionLines[lineInd + 1];
                         collY = other.y + (lineInd / 2);
-                        if (triangleEdgeCheck(this, collX1, collY) ||
-                            triangleEdgeCheck(this, collX2, collY)) {
+                        if (triangleEdgeCheck(this, collX1, collX2, collY)) {
                             this.xVel = -this.xVel;
                             this.yVel = -this.yVel;
                             // bounce away cleanly
