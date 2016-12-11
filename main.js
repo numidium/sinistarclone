@@ -53,9 +53,122 @@
                 break;
         }
     };
-    function distance(x1, y1, x2, y2) {
+    function distance(x0, y0, x1, y1) {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     };
+	function lineCheck(x0, y0, x1, y1, otherX, otherY) {
+		// Trace along a line with Bresenham
+		var _x0 = Math.round(x0);
+		var _y0 = Math.round(y0);
+		var _x1 = Math.round(x1);
+		var _y1 = Math.round(y1);
+		var dx = Math.abs(Math.round(x1 - x0));
+		var dy = Math.abs(Math.round(y1 - y0));
+		var sx = (_x0 < _x1) ? 1 : -1;
+		var sy = (_y0 < _y1) ? 1 : -1;
+		var error = dx - dy;
+		var error2;
+		
+		// Triangle is touching collision point
+		if ((Math.abs(_x0 - otherX) <= 1 && Math.abs(_y0 - otherY) <= 1)) {
+			return true;
+		}
+		while (Math.abs(_x0 - _x1) > 1 || Math.abs(_y0 - _y1) > 1) {
+			error2 = error << 1;
+			if (error2 > -dy) {
+				error -= dy;
+				_x0 += sx;
+			}
+			if (error2 < dx) {
+				error += dx;
+				_y0 += sy;
+			}
+			// Triangle is touching collision point
+			if (Math.abs(_x0 - otherX) <= 1 && Math.abs(_y0 - otherY) <= 1) {
+				return true;
+			}
+		}
+		
+		return false;
+	};
+	function triangleEdgeCheck(obj, otherX, otherY) {
+		var points = [
+					obj.x + Math.cos(Math.PI / 2 + obj.angle) * obj.collRadius,
+					obj.y + Math.sin(-Math.PI / 2 - obj.angle) * obj.collRadius,
+					obj.x + Math.cos(Math.PI * (4 / 3) + obj.angle) * obj.collRadius,
+					obj.y + Math.sin(-Math.PI * (4 / 3) - obj.angle) * obj.collRadius,
+					obj.x + Math.cos(Math.PI * (5 / 3) + obj.angle) * obj.collRadius,
+					obj.y + Math.sin(-Math.PI * (5 / 3) - obj.angle) * obj.collRadius
+				];
+		var pointInd;
+		
+		// Make first two lines
+		for (pointInd = 0; pointInd < 3; pointInd += 2) {	
+			if (lineCheck(points[pointInd], points[pointInd + 1],
+				points[pointInd + 2], points[pointInd + 3],
+				otherX, otherY)) {
+				return true;
+			}
+		}
+		// Complete the triangle
+		if (lineCheck(points[4], points[5], points[0], points[1], otherX, otherY)) {
+			return true;
+		}
+		
+		return false;
+	};
+	function triangleEdgeDraw(obj) {
+		var points = [
+					CANVAS.width / 2 + Math.cos(Math.PI / 2 + obj.angle) * obj.collRadius,
+					CANVAS.height / 2 + Math.sin(-Math.PI / 2 - obj.angle) * obj.collRadius,
+					CANVAS.width / 2 + Math.cos(Math.PI * (4 / 3) + obj.angle) * obj.collRadius,
+					CANVAS.height / 2 + Math.sin(-Math.PI * (4 / 3) - obj.angle) * obj.collRadius,
+					CANVAS.width / 2 + Math.cos(Math.PI * (5 / 3) + obj.angle) * obj.collRadius,
+					CANVAS.height / 2 + Math.sin(-Math.PI * (5 / 3) - obj.angle) * obj.collRadius
+				];
+		var pointInd;
+		
+		// Make first two lines
+		for (pointInd = 0; pointInd < 3; pointInd += 2) {	
+			if (lineDraw(points[pointInd], points[pointInd + 1],
+				points[pointInd + 2], points[pointInd + 3])) {
+				return true;
+			}
+		}
+		// Complete the triangle
+		if (lineDraw(points[4], points[5], points[0], points[1])) {
+			return true;
+		}
+		
+		return false;
+	};
+	function lineDraw(x0, y0, x1, y1) {
+		var _x0 = Math.round(x0);
+		var _y0 = Math.round(y0);
+		var _x1 = Math.round(x1);
+		var _y1 = Math.round(y1);
+		var dx = Math.abs(Math.round(x1 - x0));
+		var dy = Math.abs(Math.round(y1 - y0));
+		var sx = (_x0 < _x1) ? 1 : -1;
+		var sy = (_y0 < _y1) ? 1 : -1;
+		var error = dx - dy;
+		var error2;
+		
+		CTX.fillStyle = "#FF0000";
+		CTX.fillRect(_x0, _y0, 1, 1);
+		while (Math.abs(_x0 - _x1) > 1 || Math.abs(_y0 - _y1) > 1) {
+			error2 = error << 1;
+			if (error2 > -dy) {
+				error -= dy;
+				_x0 += sx;
+			}
+			if (error2 < dx) {
+				error += dx;
+				_y0 += sy;
+			}
+			CTX.fillRect(_x0, _y0, 1, 1);
+		}
+	};
     // Objects
     function Player() {};
     Player.prototype = {
@@ -69,7 +182,8 @@
         angleDelta: 0,
         maxVel: .3,
         throttle: false,
-        collisionRadius: 15,
+        collRadius: 15,
+		trianglePts: [],
         updateState: function(delta) {
             var entIndex;
             var other;
@@ -106,15 +220,15 @@
             for (entIndex = 1; entIndex < entities.length; entIndex++) {
                 other = entities[entIndex];
                 // collision circle is within top and bottom collision lines
-                if (this.y + this.collisionRadius > other.y &&
-                    this.y - this.collisionRadius < other.y + other.imgHeight) {
+                if (this.y + this.collRadius > other.y &&
+                    this.y - this.collRadius < other.y + other.imgHeight) {
                     // check for meeting points against either end of each line
                     for (lineInd = 0; lineInd < other.collisionLines.length; lineInd += 2) {
                         collX1 = other.x + other.collisionLines[lineInd];
                         collX2 = other.x + other.collisionLines[lineInd + 1];
                         collY = other.y + (lineInd / 2);
-                        if (distance(this.x, this.y, collX1, collY) <= this.collisionRadius ||
-                            distance(this.x, this.y, collX2, collY) <= this.collisionRadius) {
+                        if (triangleEdgeCheck(this, collX1, collY) ||
+                            triangleEdgeCheck(this, collX2, collY)) {
                             this.xVel = -this.xVel;
                             this.yVel = -this.yVel;
                             // bounce away cleanly
@@ -126,21 +240,23 @@
             }
         },
         draw: function() {
-            var radius = 15;
             var xCenter = CANVAS.width / 2;
             var yCenter = CANVAS.height / 2;
 
             // Draw a triangle to represent the character
+			/*
             CTX.beginPath();
-            CTX.moveTo(xCenter + Math.cos(Math.PI / 2 + this.angle) * radius,
-                yCenter + Math.sin(-Math.PI / 2 - this.angle) * radius);
-            CTX.lineTo(xCenter + (Math.cos(Math.PI * (4 / 3) + this.angle) * radius),
-                yCenter + (Math.sin(-Math.PI * (4 / 3) - this.angle) * radius));
-            CTX.lineTo(xCenter + (Math.cos(Math.PI * (5 / 3) + this.angle) * radius),
-                yCenter + (Math.sin(-Math.PI * (5 / 3) - this.angle) * radius));
+            CTX.moveTo(xCenter + Math.cos(Math.PI / 2 + this.angle) * this.collRadius,
+                yCenter + Math.sin(-Math.PI / 2 - this.angle) * this.collRadius);
+            CTX.lineTo(xCenter + (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius),
+                yCenter + (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius));
+            CTX.lineTo(xCenter + (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius),
+                yCenter + (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius));
             CTX.fillStyle = "#FFFFFF";
             CTX.fill();
-        }
+			*/
+			triangleEdgeDraw(playerRef);
+        },
     };
     function Asteroid(x, y, img) {
         this.x = x;
