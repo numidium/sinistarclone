@@ -58,12 +58,12 @@
     };
 	function lineCheck(x0, y0, x1, y1, otherX1, otherX2, otherY) {
 		// Trace along a line with Bresenham
-		var _x0 = Math.round(x0);
-		var _y0 = Math.round(y0);
-		var _x1 = Math.round(x1);
-		var _y1 = Math.round(y1);
-		var dx = Math.abs(Math.round(x1 - x0));
-		var dy = Math.abs(Math.round(y1 - y0));
+		var _x0 = x0;
+		var _y0 = y0;
+		var _x1 = x1;
+		var _y1 = y1;
+		var dx = Math.abs(x1 - x0);
+		var dy = Math.abs(y1 - y0);
 		var sx = (_x0 < _x1) ? 1 : -1;
 		var sy = (_y0 < _y1) ? 1 : -1;
 		var error = dx - dy;
@@ -117,6 +117,33 @@
 		
 		return false;
 	};
+	function checkCollision(subject, edgeFunc) {
+		var entIndex;
+		var other;
+		var lineInd;
+		var collX1;
+		var collX2;
+		var collY;
+		
+		for (entIndex = 1; entIndex < entities.length; entIndex++) {
+			other = entities[entIndex];
+			// collision circle is within top and bottom collision lines
+			if (subject.y + subject.collRadius > other.y &&
+				subject.y - subject.collRadius < other.y + other.imgHeight) {
+				// check for meeting points against either end of each line
+				for (lineInd = 0; lineInd < other.collisionLines.length; lineInd += 2) {
+					collX1 = other.x + other.collisionLines[lineInd];
+					collX2 = other.x + other.collisionLines[lineInd + 1];
+					collY = other.y + (lineInd / 2);
+					if (edgeFunc(subject, collX1, collX2, collY)) {
+						return true;
+					}
+				}
+			}
+		}
+		
+		return false;
+	};
 	function triangleEdgeDraw(obj) {
 		var points = [
 					CANVAS.width / 2 + Math.cos(Math.PI / 2 + obj.angle) * obj.collRadius,
@@ -143,12 +170,12 @@
 		return false;
 	};
 	function lineDraw(x0, y0, x1, y1) {
-		var _x0 = Math.round(x0);
-		var _y0 = Math.round(y0);
-		var _x1 = Math.round(x1);
-		var _y1 = Math.round(y1);
-		var dx = Math.abs(Math.round(x1 - x0));
-		var dy = Math.abs(Math.round(y1 - y0));
+		var _x0 = x0;
+		var _y0 = y0;
+		var _x1 = x1;
+		var _y1 = y1;
+		var dx = Math.abs(x1 - x0);
+		var dy = Math.abs(y1 - y0);
 		var sx = (_x0 < _x1) ? 1 : -1;
 		var sy = (_y0 < _y1) ? 1 : -1;
 		var error = dx - dy;
@@ -191,8 +218,14 @@
             var collX1;
             var collX2;
             var collY;
+			var oldAngle;
             
-            this.angle += this.angleDelta * delta;
+			oldAngle = this.angle;
+			this.angle += this.angleDelta * delta;
+			// angular collision
+			if (checkCollision(this, triangleEdgeCheck)) {
+				this.angle = oldAngle;
+			}
             if (this.throttle) {
                 this.xVelDelta = .0003 * Math.cos(this.angle + Math.PI / 2);
                 this.yVelDelta = .0003 * Math.sin(-(this.angle + Math.PI / 2));
@@ -216,45 +249,19 @@
             }
             this.x += this.xVel * delta;
             this.y += this.yVel * delta;
-            // collision
-            for (entIndex = 1; entIndex < entities.length; entIndex++) {
-                other = entities[entIndex];
-                // collision circle is within top and bottom collision lines
-                if (this.y + this.collRadius > other.y &&
-                    this.y - this.collRadius < other.y + other.imgHeight) {
-                    // check for meeting points against either end of each line
-                    for (lineInd = 0; lineInd < other.collisionLines.length; lineInd += 2) {
-                        collX1 = other.x + other.collisionLines[lineInd];
-                        collX2 = other.x + other.collisionLines[lineInd + 1];
-                        collY = other.y + (lineInd / 2);
-                        if (triangleEdgeCheck(this, collX1, collX2, collY)) {
-                            this.xVel = -this.xVel;
-                            this.yVel = -this.yVel;
-                            // bounce away cleanly
-                            this.x += this.xVel * delta;
-                            this.y += this.yVel * delta;
-                        }
-                    }
-                }
-            }
+			if (checkCollision(playerRef, triangleEdgeCheck)) {
+				this.xVel = -this.xVel;
+				this.yVel = -this.yVel;
+				// bounce away cleanly
+				this.x += this.xVel * delta;
+				this.y += this.yVel * delta;
+			}
         },
         draw: function() {
             var xCenter = CANVAS.width / 2;
             var yCenter = CANVAS.height / 2;
 
-            // Draw a triangle to represent the character
-			/*
-            CTX.beginPath();
-            CTX.moveTo(xCenter + Math.cos(Math.PI / 2 + this.angle) * this.collRadius,
-                yCenter + Math.sin(-Math.PI / 2 - this.angle) * this.collRadius);
-            CTX.lineTo(xCenter + (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius),
-                yCenter + (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius));
-            CTX.lineTo(xCenter + (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius),
-                yCenter + (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius));
-            CTX.fillStyle = "#FFFFFF";
-            CTX.fill();
-			*/
-			triangleEdgeDraw(playerRef);
+			triangleEdgeDraw(this);
         },
     };
     function Asteroid(x, y, img) {
