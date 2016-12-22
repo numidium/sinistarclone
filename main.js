@@ -144,63 +144,12 @@
 		
 		return false;
 	};
-	function triangleEdgeDraw(obj) {
-		var points = [
-					CANVAS.width / 2 + Math.cos(Math.PI / 2 + obj.angle) * obj.collRadius,
-					CANVAS.height / 2 + Math.sin(-Math.PI / 2 - obj.angle) * obj.collRadius,
-					CANVAS.width / 2 + Math.cos(Math.PI * (4 / 3) + obj.angle) * obj.collRadius,
-					CANVAS.height / 2 + Math.sin(-Math.PI * (4 / 3) - obj.angle) * obj.collRadius,
-					CANVAS.width / 2 + Math.cos(Math.PI * (5 / 3) + obj.angle) * obj.collRadius,
-					CANVAS.height / 2 + Math.sin(-Math.PI * (5 / 3) - obj.angle) * obj.collRadius
-				];
-		var pointInd;
-		
-		// Make first two lines
-		for (pointInd = 0; pointInd < 3; pointInd += 2) {	
-			if (lineDraw(points[pointInd], points[pointInd + 1],
-				points[pointInd + 2], points[pointInd + 3])) {
-				return true;
-			}
-		}
-		// Complete the triangle
-		if (lineDraw(points[4], points[5], points[0], points[1])) {
-			return true;
-		}
-		
-		return false;
-	};
-	function lineDraw(x0, y0, x1, y1) {
-		var _x0 = x0;
-		var _y0 = y0;
-		var _x1 = x1;
-		var _y1 = y1;
-		var dx = Math.abs(x1 - x0);
-		var dy = Math.abs(y1 - y0);
-		var sx = (_x0 < _x1) ? 1 : -1;
-		var sy = (_y0 < _y1) ? 1 : -1;
-		var error = dx - dy;
-		var error2;
-		
-		CTX.fillStyle = "#FF0000";
-		CTX.fillRect(_x0, _y0, 1, 1);
-		while (Math.abs(_x0 - _x1) > 1 || Math.abs(_y0 - _y1) > 1) {
-			error2 = error << 1;
-			if (error2 > -dy) {
-				error -= dy;
-				_x0 += sx;
-			}
-			if (error2 < dx) {
-				error += dx;
-				_y0 += sy;
-			}
-			CTX.fillRect(_x0, _y0, 1, 1);
-		}
-	};
     // Objects
     function Player() {};
     Player.prototype = {
         x: 0,
         y: 0,
+		image: "player",
         angle: 0,
         xVel: 0,
         yVel: 0,
@@ -258,11 +207,14 @@
 			}
         },
         draw: function() {
-            var xCenter = CANVAS.width / 2;
-            var yCenter = CANVAS.height / 2;
-
-			triangleEdgeDraw(this);
-        },
+			var img = document.getElementById(this.image);
+			
+			CTX.save();
+			CTX.translate(CANVAS.width / 2, CANVAS.height / 2);
+			CTX.rotate(-this.angle);
+			CTX.drawImage(img, -img.width / 2, -img.height / 2);
+			CTX.restore();
+        }
     };
     function Asteroid(x, y, img) {
         this.x = x;
