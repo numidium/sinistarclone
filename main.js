@@ -10,7 +10,9 @@
     var playerRef;
     function mainLoop(timeStamp) {
         var entIndex;
-		var mmLeft = CANVAS.width / 2 - 40;
+		var curEnt;
+		var mmX;
+		var mmY;
         
         timeDelta += timeStamp - lastFrameTimestamp;
         lastFrameTimestamp = timeStamp;
@@ -25,6 +27,11 @@
         CTX.clearRect(0, 0, CANVAS.width, CANVAS.height); // clear the canvas
 		// Draw entities
         for (entIndex = 0; entIndex < entities.length; entIndex++) {
+			curEnt = entities[entIndex];
+			if (Math.abs(curEnt.x - playerRef.x) >= CANVAS.width / 2 + curEnt.imgWidth / 2 ||
+				Math.abs(curEnt.y - playerRef.y) >= (CANVAS.height - HUD_HEIGHT) / 2 + curEnt.imgHeight / 2) {
+				continue;
+			}
             entities[entIndex].draw();
         }
 		// Draw HUD
@@ -32,13 +39,21 @@
 		CTX.fillRect(0, 0, CANVAS.width, HUD_HEIGHT);
 		CTX.fillStyle = "#000040";
 		CTX.fillRect(mmLeft, 0, 80, 80);
+		// Draw minimap blips
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
-			CTX.fillStyle = "#FFFFFF";
-			CTX.fillRect(mmLeft + HUD_HEIGHT / 2 - 1 +
-				(entities[entIndex].x + entities[entIndex].imgWidth / 2 - playerRef.x) / MINIMAP_SCALE,
-				HUD_HEIGHT / 2 - 1 +
-				(entities[entIndex].y + entities[entIndex].imgHeight / 2 - playerRef.y) / MINIMAP_SCALE,
-				2, 2);
+			curEnt = entities[entIndex];
+			mmX = mmLeft + HUD_HEIGHT / 2 - 1 +
+				(curEnt.x + curEnt.imgWidth / 2 - playerRef.x) / MINIMAP_SCALE;
+			if (mmX - 1 < mmLeft || mmX + 1 >= mmLeft + HUD_HEIGHT) {
+				continue;
+			}
+			mmY = HUD_HEIGHT / 2 - 1 +
+				(curEnt.y + curEnt.imgHeight / 2 - playerRef.y) / MINIMAP_SCALE;
+			if (mmY < 0 || mmY + 1 >= HUD_HEIGHT) {
+				continue;
+			}
+			CTX.fillStyle = curEnt.blipColor;
+			CTX.fillRect(mmX, mmY, 2, 2);
 		}
         requestAnimationFrame(mainLoop);
     };
@@ -169,6 +184,7 @@
 		image: "player",
 		imgWidth: 0,
 		imgHeight: 0,
+		blipColor: "#FFFFFF",
         angle: 0,
         xVel: 0,
         yVel: 0,
@@ -247,6 +263,7 @@
         image: "asteroid1",
         imgHeight: 0,
 		imgWidth: 0,
+		blipColor: "#CCCCCC",
         updateState: function () {
         },
         draw: function () {
