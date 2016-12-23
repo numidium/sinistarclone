@@ -2,12 +2,15 @@
     var CANVAS = document.getElementById('gameCanvas');
     var CTX = CANVAS.getContext('2d');
     var TIMESTEP = 10; // How finely the state is interpolated between frames. Higher = choppier.
+	var HUD_HEIGHT = 80;
+	var MINIMAP_SCALE = 50;
     var timeDelta = 0;
     var lastFrameTimestamp = 0;
     var entities = [];
     var playerRef;
     function mainLoop(timeStamp) {
         var entIndex;
+		var mmLeft = CANVAS.width / 2 - 40;
         
         timeDelta += timeStamp - lastFrameTimestamp;
         lastFrameTimestamp = timeStamp;
@@ -20,9 +23,23 @@
         }
         // Drawing
         CTX.clearRect(0, 0, CANVAS.width, CANVAS.height); // clear the canvas
+		// Draw entities
         for (entIndex = 0; entIndex < entities.length; entIndex++) {
             entities[entIndex].draw();
         }
+		// Draw HUD
+		CTX.fillStyle = "#000090";
+		CTX.fillRect(0, 0, CANVAS.width, HUD_HEIGHT);
+		CTX.fillStyle = "#000040";
+		CTX.fillRect(mmLeft, 0, 80, 80);
+		for (entIndex = 0; entIndex < entities.length; entIndex++) {
+			CTX.fillStyle = "#FFFFFF";
+			CTX.fillRect(mmLeft + HUD_HEIGHT / 2 - 1 +
+				(entities[entIndex].x + entities[entIndex].imgWidth / 2 - playerRef.x) / MINIMAP_SCALE,
+				HUD_HEIGHT / 2 - 1 +
+				(entities[entIndex].y + entities[entIndex].imgHeight / 2 - playerRef.y) / MINIMAP_SCALE,
+				2, 2);
+		}
         requestAnimationFrame(mainLoop);
     };
     function keyDownHandler(e) {
@@ -150,6 +167,8 @@
         x: 0,
         y: 0,
 		image: "player",
+		imgWidth: 0,
+		imgHeight: 0,
         angle: 0,
         xVel: 0,
         yVel: 0,
@@ -210,7 +229,7 @@
 			var img = document.getElementById(this.image);
 			
 			CTX.save();
-			CTX.translate(CANVAS.width / 2, CANVAS.height / 2);
+			CTX.translate(CANVAS.width / 2, (CANVAS.height / 2) + (HUD_HEIGHT / 2));
 			CTX.rotate(-this.angle);
 			CTX.drawImage(img, -img.width / 2, -img.height / 2);
 			CTX.restore();
@@ -226,14 +245,14 @@
         x: 0,
         y: 0,
         image: "asteroid1",
-        imgWidth: 60,
-        imgHeight: 50,
+        imgHeight: 0,
+		imgWidth: 0,
         updateState: function () {
         },
         draw: function () {
             CTX.drawImage(document.getElementById(this.image),
                 CANVAS.width / 2 + (this.x - playerRef.x),
-                CANVAS.height / 2 + (this.y - playerRef.y));
+                CANVAS.height / 2 + (this.y - playerRef.y) + (HUD_HEIGHT / 2));
         }
     };
     // Collision detectors
@@ -242,19 +261,19 @@
         var pIndX;
         var pIndY;
         var pOffset;
-        var imgWidth;
-        var imgHeight;
-        var imgID;
-        var obj;
-        function createCollisionLines(obj, id, w, h) {
-            CTX.drawImage(document.getElementById(obj.prototype.image), 0, 0);
-            pData = CTX.getImageData(0, 0, w, h);
+        function createCollisionLines(obj, id) {
+			var img = document.getElementById(obj.prototype.image);
+			
+			obj.prototype.imgHeight = img.height;
+			obj.prototype.imgWidth = img.width;
+            CTX.drawImage(img, 0, 0);
+            pData = CTX.getImageData(0, 0, img.width, img.height);
             // Every 2 entries is the beginning and ending point of a horizontal line
             obj.prototype.collisionLines = [];
-            for (pIndY = 0; pIndY < h; pIndY++) {
+            for (pIndY = 0; pIndY < img.height; pIndY++) {
                 // Left X
-                for (pIndX = 0; pIndX < w; pIndX++) {
-                    pOffset = (pIndY * 4 * w) + pIndX * 4;
+                for (pIndX = 0; pIndX < img.width; pIndX++) {
+                    pOffset = (pIndY * 4 * img.width) + pIndX * 4;
                     // detect non-black pixels
                     if (pData.data[pOffset] | pData.data[pOffset + 1] | pData.data[pOffset + 2] != 0) {
                         obj.prototype.collisionLines.push(pIndX);
@@ -262,8 +281,8 @@
                     }
                 }
                 // Right X
-                for (pIndX = w - 1; pIndX >= 0; pIndX--) {
-                    pOffset = (pIndY * 4 * w) + pIndX * 4;
+                for (pIndX = img.width - 1; pIndX >= 0; pIndX--) {
+                    pOffset = (pIndY * 4 * img.width) + pIndX * 4;
                     if (pData.data[pOffset] | pData.data[pOffset + 1] | pData.data[pOffset + 2] != 0) {
                         obj.prototype.collisionLines.push(pIndX);
                         break;
@@ -272,11 +291,9 @@
             }
         };
         
-        imgWidth = 60;
-        imgHeight = 50;
-        imgID = "asteroid1";
-        obj = Asteroid;
-        createCollisionLines(obj, imgID, imgWidth, imgHeight);
+		document.getElementById("asteroid1").onload = function () {
+			createCollisionLines(Asteroid, "asteroid1");
+		};
     });
     
     // Setup
