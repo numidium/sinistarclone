@@ -4,10 +4,13 @@
     var TIMESTEP = 10; // How finely the state is interpolated between frames. Higher = choppier.
 	var HUD_HEIGHT = 80;
 	var MINIMAP_SCALE = 50;
+	var MAX_DISTANCE = (HUD_HEIGHT * MINIMAP_SCALE) / 2;
+	var mmLeft = CANVAS.width / 2 - HUD_HEIGHT / 2;
     var timeDelta = 0;
     var lastFrameTimestamp = 0;
     var entities = [];
     var playerRef;
+	var index;
     function mainLoop(timeStamp) {
         var entIndex;
 		var curEnt;
@@ -28,8 +31,11 @@
 		// Draw entities
         for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
-			if (Math.abs(curEnt.x - playerRef.x) >= CANVAS.width / 2 + curEnt.imgWidth / 2 ||
-				Math.abs(curEnt.y - playerRef.y) >= (CANVAS.height - HUD_HEIGHT) / 2 + curEnt.imgHeight / 2) {
+			// clip offscreen sprites
+			if (curEnt.x - playerRef.x <= -(CANVAS.width / 2) - curEnt.imgWidth ||
+				curEnt.x - playerRef.x >= CANVAS.width / 2 ||
+				curEnt.y - playerRef.y <= -((CANVAS.height - HUD_HEIGHT) / 2) - curEnt.imgHeight ||
+				curEnt.y - playerRef.y >= CANVAS.height / 2) {
 				continue;
 			}
             entities[entIndex].draw();
@@ -106,7 +112,7 @@
 			return true;
 		}
 		while (Math.abs(_x0 - _x1) > 1 || Math.abs(_y0 - _y1) > 1) {
-			error2 = error << 1;
+			error2 = error << 1; // multiply by 2
 			if (error2 > -dy) {
 				error -= dy;
 				_x0 += sx;
@@ -196,7 +202,6 @@
         collRadius: 15,
 		trianglePts: [],
         updateState: function(delta) {
-            var entIndex;
             var other;
             var lineInd;
             var collX1;
@@ -263,8 +268,21 @@
         image: "asteroid1",
         imgHeight: 0,
 		imgWidth: 0,
-		blipColor: "#CCCCCC",
+		blipColor: "#777777",
         updateState: function () {
+			// wrap around effective playing field
+			if (this.x - playerRef.x > MAX_DISTANCE) {
+				this.x = playerRef.x - MAX_DISTANCE + 2;
+			}
+			else if (this.x - playerRef.x < -MAX_DISTANCE) {
+				this.x = playerRef.x + MAX_DISTANCE - 2;
+			}
+			if (this.y - playerRef.y > MAX_DISTANCE) {
+				this.y = playerRef.y - MAX_DISTANCE + 2;
+			}
+			else if (this.y - playerRef.y < -MAX_DISTANCE) {
+				this.y = playerRef.y + MAX_DISTANCE - 2;
+			}
         },
         draw: function () {
             CTX.drawImage(document.getElementById(this.image),
@@ -281,6 +299,8 @@
         function createCollisionLines(obj, id) {
 			var img = document.getElementById(obj.prototype.image);
 			
+			// TODO: Do this on a separate, invisible canvas. Looks ugly when we use
+			// the game screen.
 			obj.prototype.imgHeight = img.height;
 			obj.prototype.imgWidth = img.width;
             CTX.drawImage(img, 0, 0);
@@ -308,6 +328,7 @@
             }
         };
         
+		// Generate collision boundaries for sprites
 		document.getElementById("asteroid1").onload = function () {
 			createCollisionLines(Asteroid, "asteroid1");
 		};
@@ -316,7 +337,13 @@
     // Setup
     playerRef = new Player();
     entities.push(playerRef);
-    entities.push(new Asteroid(150, 150, "asteroid1"));
+	// Scatter some asteroids around the player
+	for (index = 0; index < 80; index++) {
+		entities.push(new Asteroid(
+			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
+			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
+			"asteroid1"));
+	}
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
     requestAnimationFrame(mainLoop); // Begin loop
