@@ -11,10 +11,16 @@
     var entities = [];
     var playerRef;
 	var index;
+	var screenX;
+	var screenY;
+	var MAX_SCREEN_BOUND_X = 100;
+	var MAX_SCREEN_BOUND_Y = 50;
+	var screenBoundX;
+	var screenBoundY;
     function mainLoop(timeStamp) {
         var entIndex;
 		var curEnt;
-		var mmX;
+		var mmX; // minimap x, y
 		var mmY;
         
         timeDelta += timeStamp - lastFrameTimestamp;
@@ -32,10 +38,10 @@
         for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
 			// clip offscreen sprites
-			if (curEnt.x - playerRef.x <= -(CANVAS.width / 2) - curEnt.imgWidth ||
-				curEnt.x - playerRef.x >= CANVAS.width / 2 ||
-				curEnt.y - playerRef.y <= -((CANVAS.height - HUD_HEIGHT) / 2) - curEnt.imgHeight ||
-				curEnt.y - playerRef.y >= CANVAS.height / 2) {
+			if (curEnt.x - screenX <= -(CANVAS.width / 2) - curEnt.imgWidth ||
+				curEnt.x - screenX >= CANVAS.width / 2 ||
+				curEnt.y - screenY <= -((CANVAS.height - HUD_HEIGHT) / 2) - curEnt.imgHeight ||
+				curEnt.y - screenY >= CANVAS.height / 2) {
 				continue;
 			}
             entities[entIndex].draw();
@@ -238,19 +244,35 @@
             }
             this.x += this.xVel * delta;
             this.y += this.yVel * delta;
-			if (checkCollision(playerRef, triangleEdgeCheck)) {
+			if (checkCollision(this, triangleEdgeCheck)) {
 				this.xVel = -this.xVel;
 				this.yVel = -this.yVel;
 				// bounce away cleanly
 				this.x += this.xVel * delta;
 				this.y += this.yVel * delta;
 			}
+			// make the screen track the player
+			screenBoundX = Math.abs((this.xVel / this.maxVel)) * MAX_SCREEN_BOUND_X;
+			screenBoundY = Math.abs((this.yVel / this.maxVel)) * MAX_SCREEN_BOUND_Y;
+			if (this.x - screenX > screenBoundX) {
+				screenX = this.x - screenBoundX;
+			}
+			else if (this.x - screenX < -screenBoundX) {
+				screenX = this.x + screenBoundX;
+			}
+			if (this.y - screenY > screenBoundY) {
+				screenY = this.y - screenBoundY;
+			}
+			else if (this.y - screenY < -screenBoundY) {
+				screenY = this.y + screenBoundY;
+			}
         },
         draw: function() {
 			var img = document.getElementById(this.image);
 			
 			CTX.save();
-			CTX.translate(CANVAS.width / 2, (CANVAS.height / 2) + (HUD_HEIGHT / 2));
+			CTX.translate(CANVAS.width / 2 + (this.x - screenX),
+				CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2));
 			CTX.rotate(-this.angle);
 			CTX.drawImage(img, -img.width / 2, -img.height / 2);
 			CTX.restore();
@@ -286,8 +308,8 @@
         },
         draw: function () {
             CTX.drawImage(document.getElementById(this.image),
-                CANVAS.width / 2 + (this.x - playerRef.x),
-                CANVAS.height / 2 + (this.y - playerRef.y) + (HUD_HEIGHT / 2));
+                CANVAS.width / 2 + (this.x - screenX),
+                CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2));
         }
     };
     // Collision detectors
@@ -337,7 +359,10 @@
     // Setup
     playerRef = new Player();
     entities.push(playerRef);
+	screenX = playerRef.x;
+	screenY = playerRef.y;
 	// Scatter some asteroids around the player
+	// TODO: ensure that none of them spawn on top of the player
 	for (index = 0; index < 80; index++) {
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
