@@ -3,8 +3,8 @@
     var CTX = CANVAS.getContext('2d');
     var TIMESTEP = 10; // How finely the state is interpolated between frames. Higher = choppier.
 	var HUD_HEIGHT = 80;
-	var MINIMAP_SCALE = 50;
-	var MAX_DISTANCE = (HUD_HEIGHT * MINIMAP_SCALE) / 2;
+	var MINIMAP_SCALE = 30;
+	var MAX_DISTANCE = 1500;
 	var mmLeft = CANVAS.width / 2 - HUD_HEIGHT / 2;
     var timeDelta = 0;
     var lastFrameTimestamp = 0;
@@ -51,6 +51,14 @@
 		CTX.fillRect(0, 0, CANVAS.width, HUD_HEIGHT);
 		CTX.fillStyle = "#000040";
 		CTX.fillRect(mmLeft, 0, 80, 80);
+		CTX.beginPath();
+		CTX.strokeStyle = "#FFFF00";
+		// visible distance rectangle
+		CTX.rect(mmLeft + HUD_HEIGHT / 2 - (playerRef.x - screenX + CANVAS.width / 2) / MINIMAP_SCALE,
+			HUD_HEIGHT / 2 - (playerRef.y - screenY + (CANVAS.height - HUD_HEIGHT) / 2) / MINIMAP_SCALE,
+			CANVAS.width / MINIMAP_SCALE,
+			(CANVAS.height - HUD_HEIGHT) / MINIMAP_SCALE);
+		CTX.stroke();
 		// Draw minimap blips
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
@@ -202,6 +210,7 @@
         yVel: 0,
         xVelDelta: 0,
         yVelDelta: 0,
+		accel: .0004,
         angleDelta: 0,
         maxVel: .3,
         throttle: false,
@@ -214,6 +223,7 @@
             var collX2;
             var collY;
 			var oldAngle;
+			var velSign;
             
 			oldAngle = this.angle;
 			this.angle += this.angleDelta * delta;
@@ -222,10 +232,24 @@
 				this.angle = oldAngle;
 			}
             if (this.throttle) {
-                this.xVelDelta = .0003 * Math.cos(this.angle + Math.PI / 2);
-                this.yVelDelta = .0003 * Math.sin(-(this.angle + Math.PI / 2));
+                this.xVelDelta = this.accel * Math.cos(this.angle + Math.PI / 2);
+                this.yVelDelta = this.accel * Math.sin(-(this.angle + Math.PI / 2));
             } else {
-                this.xVelDelta = this.yVelDelta = 0;
+				// slow to a stop
+				if (Math.abs(this.xVel) > this.accel) {
+					this.velSign = this.xVel >= 0 ? -1 : 1;
+					this.xVelDelta = this.velSign * (this.accel / 3);
+				} else {
+					this.xVelDelta = 0;
+					this.xVel = 0;
+				}
+				if (Math.abs(this.yVel) > this.accel) {
+					this.velSign = this.yVel >= 0 ? -1 : 1;
+					this.yVelDelta = this.velSign * (this.accel / 3);
+				} else {
+					this.yVelDelta = 0;
+					this.yVel = 0;
+				}
             }
             // Velocity is in units of pixels per millisecond.
             this.xVel += this.xVelDelta * delta;
@@ -361,6 +385,7 @@
     entities.push(playerRef);
 	screenX = playerRef.x;
 	screenY = playerRef.y;
+	CTX.lineWidth = "1";
 	// Scatter some asteroids around the player
 	// TODO: ensure that none of them spawn on top of the player
 	for (index = 0; index < 80; index++) {
