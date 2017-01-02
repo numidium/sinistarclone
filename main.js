@@ -11,12 +11,14 @@
     var entities = [];
     var playerRef;
 	var index;
+	var entRef;
 	var screenX;
 	var screenY;
 	var MAX_SCREEN_BOUND_X = 100;
 	var MAX_SCREEN_BOUND_Y = 50;
 	var screenBoundX;
 	var screenBoundY;
+	var colliderLib = {};
     function mainLoop(timeStamp) {
         var entIndex;
 		var curEnt;
@@ -106,7 +108,7 @@
         }
     };
     function distance(x0, y0, x1, y1) {
-        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        return Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
     };
 	function lineCheck(x0, y0, x1, y1, otherX1, otherX2, otherY) {
 		// Trace along a line with Bresenham
@@ -169,6 +171,7 @@
 		
 		return false;
 	};
+	// TODO: Determine why this function randomly fails after a refresh
 	function checkCollision(subject, edgeFunc) {
 		var entIndex;
 		var other;
@@ -197,6 +200,14 @@
 		return false;
 	};
     // Objects
+	function ImgColliderPair() {};
+	ImgColliderPair.prototype = {
+		image: "",
+		imgWidth: 0,
+		imgHeight: 0,
+		collRadius: 0,
+		collisionLines: []
+	};
     function Player() {};
     Player.prototype = {
         x: 0,
@@ -319,14 +330,12 @@
 			// wrap around effective playing field
 			if (this.x - playerRef.x > MAX_DISTANCE) {
 				this.x = playerRef.x - MAX_DISTANCE + 2;
-			}
-			else if (this.x - playerRef.x < -MAX_DISTANCE) {
+			} else if (this.x - playerRef.x < -MAX_DISTANCE) {
 				this.x = playerRef.x + MAX_DISTANCE - 2;
 			}
 			if (this.y - playerRef.y > MAX_DISTANCE) {
 				this.y = playerRef.y - MAX_DISTANCE + 2;
-			}
-			else if (this.y - playerRef.y < -MAX_DISTANCE) {
+			} else if (this.y - playerRef.y < -MAX_DISTANCE) {
 				this.y = playerRef.y + MAX_DISTANCE - 2;
 			}
         },
@@ -387,12 +396,17 @@
 	screenY = playerRef.y;
 	CTX.lineWidth = "1";
 	// Scatter some asteroids around the player
-	// TODO: ensure that none of them spawn on top of the player
+	// TODO: improve random distribution
 	for (index = 0; index < 80; index++) {
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 			"asteroid1"));
+		entRef = entities[entities.length - 1];
+		// move out of the way if on top of the player
+		if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
+			entRef.x += entRef.collRadius;
+		}
 	}
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
