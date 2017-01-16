@@ -22,6 +22,7 @@
     function mainLoop(timeStamp) {
         var entIndex;
 		var curEnt;
+		var curEntColl;
 		var mmX; // minimap x, y
 		var mmY;
         
@@ -39,10 +40,11 @@
 		// Draw entities
         for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
+			curEntColl = colliderLib[curEnt.image];
 			// clip offscreen sprites
-			if (curEnt.x - screenX <= -(CANVAS.width / 2) - curEnt.imgWidth ||
+			if (curEnt.x - screenX <= -(CANVAS.width / 2) - curEntColl.imgWidth ||
 				curEnt.x - screenX >= CANVAS.width / 2 ||
-				curEnt.y - screenY <= -((CANVAS.height - HUD_HEIGHT) / 2) - curEnt.imgHeight ||
+				curEnt.y - screenY <= -((CANVAS.height - HUD_HEIGHT) / 2) - curEntColl.imgHeight ||
 				curEnt.y - screenY >= CANVAS.height / 2) {
 				continue;
 			}
@@ -64,13 +66,14 @@
 		// Draw minimap blips
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
+			curEntColl = colliderLib[curEnt.image];
 			mmX = mmLeft + HUD_HEIGHT / 2 - 1 +
-				(curEnt.x + curEnt.imgWidth / 2 - playerRef.x) / MINIMAP_SCALE;
+				(curEnt.x + curEntColl.imgWidth / 2 - playerRef.x) / MINIMAP_SCALE;
 			if (mmX - 1 < mmLeft || mmX + 1 >= mmLeft + HUD_HEIGHT) {
 				continue;
 			}
 			mmY = HUD_HEIGHT / 2 - 1 +
-				(curEnt.y + curEnt.imgHeight / 2 - playerRef.y) / MINIMAP_SCALE;
+				(curEnt.y + curEntColl.imgHeight / 2 - playerRef.y) / MINIMAP_SCALE;
 			if (mmY < 0 || mmY + 1 >= HUD_HEIGHT) {
 				continue;
 			}
@@ -175,6 +178,7 @@
 	function checkCollision(subject, edgeFunc) {
 		var entIndex;
 		var other;
+		var otherColl;
 		var lineInd;
 		var collX1;
 		var collX2;
@@ -182,13 +186,14 @@
 		
 		for (entIndex = 1; entIndex < entities.length; entIndex++) {
 			other = entities[entIndex];
+			otherColl = colliderLib[entities[entIndex].image];
 			// collision circle is within top and bottom collision lines
 			if (subject.y + subject.collRadius > other.y &&
-				subject.y - subject.collRadius < other.y + other.imgHeight) {
+				subject.y - subject.collRadius < other.y + otherColl.imgHeight) {
 				// check for meeting points against either end of each line
-				for (lineInd = 0; lineInd < other.collisionLines.length; lineInd += 2) {
-					collX1 = other.x + other.collisionLines[lineInd];
-					collX2 = other.x + other.collisionLines[lineInd + 1];
+				for (lineInd = 0; lineInd < otherColl.collisionLines.length; lineInd += 2) {
+					collX1 = other.x + otherColl.collisionLines[lineInd];
+					collX2 = other.x + otherColl.collisionLines[lineInd + 1];
 					collY = other.y + (lineInd / 2);
 					if (edgeFunc(subject, collX1, collX2, collY)) {
 						return true;
@@ -200,7 +205,9 @@
 		return false;
 	};
     // Objects
-	function ImgColliderPair() {};
+	function ImgColliderPair(imgID) {
+		this.image = imgID;
+	};
 	ImgColliderPair.prototype = {
 		image: "",
 		imgWidth: 0,
@@ -322,9 +329,7 @@
         constructor: Asteroid,
         x: 0,
         y: 0,
-        image: "asteroid1",
-        imgHeight: 0,
-		imgWidth: 0,
+        image: "",
 		blipColor: "#777777",
         updateState: function () {
 			// wrap around effective playing field
@@ -351,24 +356,26 @@
         var pIndX;
         var pIndY;
         var pOffset;
-        function createCollisionLines(obj, id) {
-			var img = document.getElementById(obj.prototype.image);
+        function createCollisionLines(colliders, id) {
+			var img;
 			
+			colliders[id] = new ImgColliderPair(id);
+			img	= document.getElementById(colliders[id].image);
 			// TODO: Do this on a separate, invisible canvas. Looks ugly when we use
 			// the game screen.
-			obj.prototype.imgHeight = img.height;
-			obj.prototype.imgWidth = img.width;
+			colliders[id].imgHeight = img.height;
+			colliders[id].imgWidth = img.width;
             CTX.drawImage(img, 0, 0);
             pData = CTX.getImageData(0, 0, img.width, img.height);
             // Every 2 entries is the beginning and ending point of a horizontal line
-            obj.prototype.collisionLines = [];
+            colliders[id].collisionLines = [];
             for (pIndY = 0; pIndY < img.height; pIndY++) {
                 // Left X
                 for (pIndX = 0; pIndX < img.width; pIndX++) {
                     pOffset = (pIndY * 4 * img.width) + pIndX * 4;
                     // detect non-black pixels
                     if (pData.data[pOffset] | pData.data[pOffset + 1] | pData.data[pOffset + 2] != 0) {
-                        obj.prototype.collisionLines.push(pIndX);
+                        colliders[id].collisionLines.push(pIndX);
                         break;
                     }
                 }
@@ -376,7 +383,7 @@
                 for (pIndX = img.width - 1; pIndX >= 0; pIndX--) {
                     pOffset = (pIndY * 4 * img.width) + pIndX * 4;
                     if (pData.data[pOffset] | pData.data[pOffset + 1] | pData.data[pOffset + 2] != 0) {
-                        obj.prototype.collisionLines.push(pIndX);
+                        colliders[id].collisionLines.push(pIndX);
                         break;
                     }
                 }
@@ -384,8 +391,15 @@
         };
         
 		// Generate collision boundaries for sprites
+		// TODO: start loop only after all assets are loaded so that we can
+		// store refs to collision data inside entities
 		document.getElementById("asteroid1").onload = function () {
-			createCollisionLines(Asteroid, "asteroid1");
+			createCollisionLines(colliderLib, "asteroid1");
+		};
+		colliderLib["player"] = {
+			imgWidth: 0,
+			imgHeight: 0,
+			id: 0
 		};
     });
     
