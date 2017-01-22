@@ -7,6 +7,7 @@
 	var MAX_DISTANCE = 1500;
 	var mmLeft = CANVAS.width / 2 - HUD_HEIGHT / 2;
     var timeDelta = 0;
+	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolating
     var lastFrameTimestamp = 0;
     var entities = [];
     var playerRef;
@@ -27,6 +28,7 @@
 		var mmY;
         
         timeDelta += timeStamp - lastFrameTimestamp;
+		timeDelta = timeDelta > MAX_TIME_DELTA ? MAX_TIME_DELTA : timeDelta;
         lastFrameTimestamp = timeStamp;
         // Interpolate state updates
         while (timeDelta >= TIMESTEP) {
@@ -174,7 +176,6 @@
 		
 		return false;
 	};
-	// TODO: Determine why this function randomly fails after a refresh
 	function checkCollision(subject, edgeFunc) {
 		var entIndex;
 		var other;
@@ -184,9 +185,14 @@
 		var collX2;
 		var collY;
 		
-		for (entIndex = 1; entIndex < entities.length; entIndex++) {
+		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			other = entities[entIndex];
+			if (other == subject) {
+				continue;
+			}
 			otherColl = colliderLib[entities[entIndex].image];
+			// TODO: keep from entering loop if player x coordinate is not in
+			// range of the object
 			// collision circle is within top and bottom collision lines
 			if (subject.y + subject.collRadius > other.y &&
 				subject.y - subject.collRadius < other.y + otherColl.imgHeight) {
@@ -365,6 +371,7 @@
 			// the game screen.
 			colliders[id].imgHeight = img.height;
 			colliders[id].imgWidth = img.width;
+			CTX.clearRect(0, 0, CANVAS.width, CANVAS.height); // clear the canvas
             CTX.drawImage(img, 0, 0);
             pData = CTX.getImageData(0, 0, img.width, img.height);
             // Every 2 entries is the beginning and ending point of a horizontal line
@@ -396,6 +403,9 @@
 		document.getElementById("asteroid1").onload = function () {
 			createCollisionLines(colliderLib, "asteroid1");
 		};
+		document.getElementById("asteroid2").onload = function () {
+			createCollisionLines(colliderLib, "asteroid2");
+		};
 		colliderLib["player"] = {
 			imgWidth: 0,
 			imgHeight: 0,
@@ -408,14 +418,13 @@
     entities.push(playerRef);
 	screenX = playerRef.x;
 	screenY = playerRef.y;
-	CTX.lineWidth = "1";
+	CTX.lineWidth = 1;
 	// Scatter some asteroids around the player
-	// TODO: improve random distribution
 	for (index = 0; index < 80; index++) {
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
-			"asteroid1"));
+			["asteroid1", "asteroid2"][Math.round(Math.random())]));
 		entRef = entities[entities.length - 1];
 		// move out of the way if on top of the player
 		if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
