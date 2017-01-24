@@ -316,14 +316,19 @@
 			}
         },
         draw: function() {
-			var img = document.getElementById(this.image);
-			
-			CTX.save();
-			CTX.translate(CANVAS.width / 2 + (this.x - screenX),
-				CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2));
-			CTX.rotate(-this.angle);
-			CTX.drawImage(img, -img.width / 2, -img.height / 2);
-			CTX.restore();
+            var xCenter = CANVAS.width / 2 + (this.x - screenX);
+            var yCenter = CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2);
+
+            // Draw a triangle to represent the character
+            CTX.beginPath();
+            CTX.moveTo(xCenter + Math.cos(Math.PI / 2 + this.angle) * this.collRadius,
+                yCenter + Math.sin(-Math.PI / 2 - this.angle) * this.collRadius);
+            CTX.lineTo(xCenter + (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius),
+                yCenter + (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius));
+            CTX.lineTo(xCenter + (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius),
+                yCenter + (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius));
+            CTX.fillStyle = "#00FF00";
+            CTX.fill();
         }
     };
     function Asteroid(x, y, img) {
