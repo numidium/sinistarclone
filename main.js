@@ -151,11 +151,12 @@
 		
 		return false;
 	};
-	function checkCollision(subject, edgeFunc) {
+	function checkCollision(subject) {
 		var entIndex;
 		var other;
 		var otherColl;
-		var lineInd;
+		var sLineInd;
+		var oLineInd;
 		var collX1;
 		var collX2;
 		var collY;
@@ -165,21 +166,23 @@
 			if (other == subject) {
 				continue;
 			}
-			otherColl = colliderLib[entities[entIndex].image];
-			// TODO: keep from entering loop if player x coordinate is not in
-			// range of the object
-			// collision circle is within top and bottom collision lines
-			if (subject.y + subject.collRadius > other.y &&
-				subject.y - subject.collRadius < other.y + otherColl.imgHeight) {
-				// TODO: replace this block with polygonal collision checks
-				// i.e. check if the entities' vertices intersect
-				// check for meeting points against either end of each line
-				for (lineInd = 0; lineInd < otherColl.collisionLines.length; lineInd += 2) {
-					collX1 = other.x + otherColl.collisionLines[lineInd];
-					collX2 = other.x + otherColl.collisionLines[lineInd + 1];
-					collY = other.y + (lineInd / 2);
-					if (edgeFunc(subject, other)) {
-						return true;
+			// There are algorithms that can do faster polygonal collsion detection.
+			// Maybe replace this with one of those later.
+			if (distance(subject.x, subject.y, other.x, other.y) < subject.collRadius + other.collRadius) {
+				for (sLineInd = 0; sLineInd < subject.collLines.length; sLineInd++) {
+					for (oLineInd = 0; oLineInd < other.collLines.length; oLineInd++) {
+						if (lineCheck(
+							subject.collLines[sLineInd].x0,
+							subject.collLines[sLineInd].y0,
+							subject.collLines[sLineInd].x1,
+							subject.collLines[sLineInd].y1,
+							other.collLines[oLineInd].x0,
+							other.collLines[oLineInd].y0,
+							other.collLines[oLineInd].x1,
+							other.collLines[oLineInd].y1
+							)) {
+								return true;
+							}
 					}
 				}
 			}
