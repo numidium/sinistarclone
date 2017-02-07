@@ -115,42 +115,17 @@
     function distance(x0, y0, x1, y1) {
         return Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
     };
-	function lineCheck(x0, y0, x1, y1, otherX1, otherX2, otherY) {
-		// Trace along a line with Bresenham
-		var _x0 = x0;
-		var _y0 = y0;
-		var _x1 = x1;
-		var _y1 = y1;
-		var dx = Math.abs(x1 - x0);
-		var dy = Math.abs(y1 - y0);
-		var sx = (_x0 < _x1) ? 1 : -1;
-		var sy = (_y0 < _y1) ? 1 : -1;
-		var error = dx - dy;
-		var error2;
+	function lineCheck(x1, y1, x2, y2, x3, y3, x4, y4) {
+		var a_dx = x2 - x1;
+		var a_dy = y2 - y1;
+		var b_dx = x4 - x3;
+		var b_dy = y4 - y3;
+		var s = (-a_dy * (x1 - x3) + a_dx * (y1 - y3)) / (-b_dx * a_dy + a_dx * b_dy);
+		var t = (+b_dx * (y1 - y3) - b_dy * (x1 - x3)) / (-b_dx * a_dy + a_dx * b_dy);
 		
-		// Triangle is touching a collision line
-		if (Math.abs(_y0 - otherY) <= 1 && _x0 >= otherX1 && _x0 <= otherX2) {
-			return true;
-		}
-		while (Math.abs(_x0 - _x1) > 1 || Math.abs(_y0 - _y1) > 1) {
-			error2 = error << 1; // multiply by 2
-			if (error2 > -dy) {
-				error -= dy;
-				_x0 += sx;
-			}
-			if (error2 < dx) {
-				error += dx;
-				_y0 += sy;
-			}
-			// Triangle is touching collision point
-			if (Math.abs(_y0 - otherY) <= 1 && _x0 >= otherX1 && _x0 <= otherX2) {
-				return true;
-			}
-		}
-		
-		return false;
+		return (s >= 0 && s <= 1 && t >= 0 && t <= 1);
 	};
-	function triangleEdgeCheck(obj, otherX1, otherX2, otherY) {
+	function triangleEdgeCheck(obj, other) {
 		var points = [
 					obj.x + Math.cos(Math.PI / 2 + obj.angle) * obj.collRadius,
 					obj.y + Math.sin(-Math.PI / 2 - obj.angle) * obj.collRadius,
@@ -196,12 +171,14 @@
 			// collision circle is within top and bottom collision lines
 			if (subject.y + subject.collRadius > other.y &&
 				subject.y - subject.collRadius < other.y + otherColl.imgHeight) {
+				// TODO: replace this block with polygonal collision checks
+				// i.e. check if the entities' vertices intersect
 				// check for meeting points against either end of each line
 				for (lineInd = 0; lineInd < otherColl.collisionLines.length; lineInd += 2) {
 					collX1 = other.x + otherColl.collisionLines[lineInd];
 					collX2 = other.x + otherColl.collisionLines[lineInd + 1];
 					collY = other.y + (lineInd / 2);
-					if (edgeFunc(subject, collX1, collX2, collY)) {
+					if (edgeFunc(subject, other)) {
 						return true;
 					}
 				}
