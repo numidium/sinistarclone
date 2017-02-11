@@ -172,14 +172,14 @@
 				for (sLineInd = 0; sLineInd < subject.collLines.length; sLineInd++) {
 					for (oLineInd = 0; oLineInd < other.collLines.length; oLineInd++) {
 						if (lineCheck(
-							subject.collLines[sLineInd].x0,
-							subject.collLines[sLineInd].y0,
-							subject.collLines[sLineInd].x1,
-							subject.collLines[sLineInd].y1,
-							other.collLines[oLineInd].x0,
-							other.collLines[oLineInd].y0,
-							other.collLines[oLineInd].x1,
-							other.collLines[oLineInd].y1
+							subject.collLines[sLineInd].x0 + subject.x,
+							subject.collLines[sLineInd].y0 + subject.y,
+							subject.collLines[sLineInd].x1 + subject.x,
+							subject.collLines[sLineInd].y1 + subject.y,
+							other.collLines[oLineInd].x0 + other.x,
+							other.collLines[oLineInd].y0 + other.y,
+							other.collLines[oLineInd].x1 + other.x,
+							other.collLines[oLineInd].y1 + other.y
 							)) {
 								return true;
 							}
@@ -312,9 +312,14 @@
         }
     };
     function Asteroid(x, y, img) {
+        var pointInd;
+        
         this.x = x;
         this.y = y;
         this.image = img;
+        for (pointInd = 0; pointInd < 6; pointInd++) {
+            
+        }
     };
     Asteroid.prototype = {
         constructor: Asteroid,
@@ -322,6 +327,7 @@
         y: 0,
         image: "",
 		blipColor: "#777777",
+        collLines: [],
         updateState: function () {
 			// wrap around effective playing field
 			if (this.x - playerRef.x > MAX_DISTANCE) {
@@ -341,62 +347,6 @@
                 CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2));
         }
     };
-    // Collision detectors
-    document.addEventListener("DOMContentLoaded", function () {
-        var pData;
-        var pIndX;
-        var pIndY;
-        var pOffset;
-        function createCollisionLines(colliders, id) {
-			var img;
-			
-			colliders[id] = new ImgColliderPair(id);
-			img	= document.getElementById(colliders[id].image);
-			// TODO: Do this on a separate, invisible canvas. Looks ugly when we use
-			// the game screen.
-			colliders[id].imgHeight = img.height;
-			colliders[id].imgWidth = img.width;
-			CTX.clearRect(0, 0, CANVAS.width, CANVAS.height); // clear the canvas
-            CTX.drawImage(img, 0, 0);
-            pData = CTX.getImageData(0, 0, img.width, img.height);
-            // Every 2 entries is the beginning and ending point of a horizontal line
-            colliders[id].collisionLines = [];
-            for (pIndY = 0; pIndY < img.height; pIndY++) {
-                // Left X
-                for (pIndX = 0; pIndX < img.width; pIndX++) {
-                    pOffset = (pIndY * 4 * img.width) + pIndX * 4;
-                    // detect non-black pixels
-                    if (pData.data[pOffset] | pData.data[pOffset + 1] | pData.data[pOffset + 2] != 0) {
-                        colliders[id].collisionLines.push(pIndX);
-                        break;
-                    }
-                }
-                // Right X
-                for (pIndX = img.width - 1; pIndX >= 0; pIndX--) {
-                    pOffset = (pIndY * 4 * img.width) + pIndX * 4;
-                    if (pData.data[pOffset] | pData.data[pOffset + 1] | pData.data[pOffset + 2] != 0) {
-                        colliders[id].collisionLines.push(pIndX);
-                        break;
-                    }
-                }
-            }
-        };
-        
-		// Generate collision boundaries for sprites
-		// TODO: start loop only after all assets are loaded so that we can
-		// store refs to collision data inside entities
-		document.getElementById("asteroid1").onload = function () {
-			createCollisionLines(colliderLib, "asteroid1");
-		};
-		document.getElementById("asteroid2").onload = function () {
-			createCollisionLines(colliderLib, "asteroid2");
-		};
-		colliderLib["player"] = {
-			imgWidth: 0,
-			imgHeight: 0,
-			id: 0
-		};
-    });
     
     // Setup
     playerRef = new Player();
