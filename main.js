@@ -43,13 +43,6 @@
         for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
 			curEntColl = colliderLib[curEnt.image];
-			// clip offscreen sprites
-			if (curEnt.x - screenX <= -(CANVAS.width / 2) - curEntColl.imgWidth ||
-				curEnt.x - screenX >= CANVAS.width / 2 ||
-				curEnt.y - screenY <= -((CANVAS.height - HUD_HEIGHT) / 2) - curEntColl.imgHeight ||
-				curEnt.y - screenY >= CANVAS.height / 2) {
-				continue;
-			}
             entities[entIndex].draw();
         }
 		// Draw HUD
@@ -68,14 +61,11 @@
 		// Draw minimap blips
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
-			curEntColl = colliderLib[curEnt.image];
-			mmX = mmLeft + HUD_HEIGHT / 2 - 1 +
-				(curEnt.x + curEntColl.imgWidth / 2 - playerRef.x) / MINIMAP_SCALE;
+			mmX = mmLeft + HUD_HEIGHT / 2 - 1 + (curEnt.x - playerRef.x) / MINIMAP_SCALE;
 			if (mmX - 1 < mmLeft || mmX + 1 >= mmLeft + HUD_HEIGHT) {
 				continue;
 			}
-			mmY = HUD_HEIGHT / 2 - 1 +
-				(curEnt.y + curEntColl.imgHeight / 2 - playerRef.y) / MINIMAP_SCALE;
+			mmY = HUD_HEIGHT / 2 - 1 + (curEnt.y - playerRef.y) / MINIMAP_SCALE;
 			if (mmY < 0 || mmY + 1 >= HUD_HEIGHT) {
 				continue;
 			}
@@ -311,21 +301,29 @@
             CTX.fill();
         }
     };
-    function Asteroid(x, y, img) {
+    function Asteroid(x, y) {
         var pointInd;
+        var angle;
+        var vertexCount = 6;
+        var angleInc = (2 * Math.PI) / vertexCount;
+        var minRadius = 10;
+        var radius;
         
         this.x = x;
         this.y = y;
-        this.image = img;
-        for (pointInd = 0; pointInd < 6; pointInd++) {
-            
+        // Generate polygon points
+        for (pointInd = 0; pointInd < vertexCount; pointInd++) {
+            angle = pointInd * angleInc + Math.random() * (angleInc - .01);
+            radius = minRadius + Math.random() * (this.collRadius - minRadius);
+            this.collLines.push(Math.round(Math.cos(angle) * radius));
+            this.collLines.push(Math.round(Math.sin(angle) * radius));
         }
     };
     Asteroid.prototype = {
         constructor: Asteroid,
         x: 0,
         y: 0,
-        image: "",
+        collRadius: 50,
 		blipColor: "#777777",
         collLines: [],
         updateState: function () {
@@ -342,9 +340,6 @@
 			}
         },
         draw: function () {
-            CTX.drawImage(document.getElementById(this.image),
-                CANVAS.width / 2 + (this.x - screenX),
-                CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2));
         }
     };
     
@@ -355,6 +350,7 @@
 	screenY = playerRef.y;
 	CTX.lineWidth = 1;
 	// Scatter some asteroids around the player
+    /*
 	for (index = 0; index < 80; index++) {
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
@@ -366,6 +362,8 @@
 			entRef.x += entRef.collRadius;
 		}
 	}
+    */
+    entities.push(new Asteroid(200, 200));
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
     requestAnimationFrame(mainLoop); // Begin loop
