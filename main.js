@@ -159,22 +159,18 @@
 			// There are algorithms that can do faster polygonal collsion detection.
 			// Maybe replace this with one of those later.
 			if (distance(subject.x, subject.y, other.x, other.y) < subject.collRadius + other.collRadius) {
-				for (sLineInd = 0; sLineInd < subject.collLines.length; sLineInd++) {
-					for (oLineInd = 0; oLineInd < other.collLines.length; oLineInd++) {
-						if (lineCheck(
-							subject.collLines[sLineInd].x0 + subject.x,
-							subject.collLines[sLineInd].y0 + subject.y,
-							subject.collLines[sLineInd].x1 + subject.x,
-							subject.collLines[sLineInd].y1 + subject.y,
-							other.collLines[oLineInd].x0 + other.x,
-							other.collLines[oLineInd].y0 + other.y,
-							other.collLines[oLineInd].x1 + other.x,
-							other.collLines[oLineInd].y1 + other.y
-							)) {
-								return true;
-							}
-					}
-				}
+                if (lineCheck(
+                    subject.collLines[sLineInd].x0 + subject.x,
+                    subject.collLines[sLineInd].y0 + subject.y,
+                    subject.collLines[sLineInd].x1 + subject.x,
+                    subject.collLines[sLineInd].y1 + subject.y,
+                    other.collLines[oLineInd].x0 + other.x,
+                    other.collLines[oLineInd].y0 + other.y,
+                    other.collLines[oLineInd].x1 + other.x,
+                    other.collLines[oLineInd].y1 + other.y
+                    )) {
+                        return true;
+                    }
 			}
 		}
 		
@@ -209,7 +205,7 @@
         maxVel: .3,
         throttle: false,
         collRadius: 15,
-		trianglePts: [],
+		collLines: [],
         updateState: function(delta) {
             var other;
             var lineInd;
@@ -222,7 +218,7 @@
 			oldAngle = this.angle;
 			this.angle += this.angleDelta * delta;
 			// angular collision
-			if (checkCollision(this, triangleEdgeCheck)) {
+			if (checkCollision(this)) {
 				this.angle = oldAngle;
 			}
             if (this.throttle) {
@@ -262,7 +258,13 @@
             }
             this.x += this.xVel * delta;
             this.y += this.yVel * delta;
-			if (checkCollision(this, triangleEdgeCheck)) {
+            this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
+            this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
+            this.collLines[2] = (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius);
+            this.collLines[3] = (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius);
+            this.collLines[4] = (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius);
+            this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
+			if (checkCollision(this)) {
 				this.xVel = -this.xVel;
 				this.yVel = -this.yVel;
 				// bounce away cleanly
@@ -290,6 +292,7 @@
             var yCenter = CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2);
 
             // Draw a triangle to represent the character
+            /*
             CTX.beginPath();
             CTX.moveTo(xCenter + Math.cos(Math.PI / 2 + this.angle) * this.collRadius,
                 yCenter + Math.sin(-Math.PI / 2 - this.angle) * this.collRadius);
@@ -297,6 +300,16 @@
                 yCenter + (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius));
             CTX.lineTo(xCenter + (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius),
                 yCenter + (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius));
+           */
+            var index;
+            
+            CTX.beginPath();
+            CTX.moveTo(xCenter + this.collLines[0],
+                yCenter + this.collLines[1]);
+            for (index = 2; index < this.collLines.length; index += 2) {
+                CTX.lineTo(xCenter + this.collLines[index],
+                    yCenter + this.collLines[index + 1]);
+            }
             CTX.fillStyle = "#00FF00";
             CTX.fill();
         }
@@ -340,6 +353,17 @@
 			}
         },
         draw: function () {
+            var index;
+            
+            CTX.beginPath();
+            CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+                CANVAS.height / 2 + (this.y - screenY) + this.collLines[1]);
+            for (index = 2; index < this.collLines.length; index += 2) {
+                CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
+                    CANVAS.height / 2 + (this.y - screenY) + this.collLines[index + 1]);
+            }
+            CTX.fillStyle = "#AAAAAA";
+            CTX.fill();
         }
     };
     
