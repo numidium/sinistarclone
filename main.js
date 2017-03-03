@@ -159,18 +159,34 @@
 			// There are algorithms that can do faster polygonal collsion detection.
 			// Maybe replace this with one of those later.
 			if (distance(subject.x, subject.y, other.x, other.y) < subject.collRadius + other.collRadius) {
+                for (sLineInd = 0; sLineInd < subject.collLines.length - 3; sLineInd += 2) {
+                    for (oLineInd = 0; oLineInd < other.collLines.length - 3; oLineInd += 2) {
+                        if (lineCheck(
+                            subject.collLines[sLineInd] + subject.x,
+                            subject.collLines[sLineInd + 1] + subject.y,
+                            subject.collLines[sLineInd + 2] + subject.x,
+                            subject.collLines[sLineInd + 3] + subject.y,
+                            other.collLines[oLineInd] + other.x,
+                            other.collLines[oLineInd + 1] + other.y,
+                            other.collLines[oLineInd + 2] + other.x,
+                            other.collLines[oLineInd + 3] + other.y
+                            )) {
+                                return true;
+                        }
+                    }
+                }
                 if (lineCheck(
-                    subject.collLines[sLineInd].x0 + subject.x,
-                    subject.collLines[sLineInd].y0 + subject.y,
-                    subject.collLines[sLineInd].x1 + subject.x,
-                    subject.collLines[sLineInd].y1 + subject.y,
-                    other.collLines[oLineInd].x0 + other.x,
-                    other.collLines[oLineInd].y0 + other.y,
-                    other.collLines[oLineInd].x1 + other.x,
-                    other.collLines[oLineInd].y1 + other.y
+                    subject.collLines[subject.collLines.length - 2] + subject.x,
+                    subject.collLines[subject.collLines.length - 1] + subject.y,
+                    subject.collLines[0] + subject.x,
+                    subject.collLines[1] + subject.y,
+                    other.collLines[other.collLines.length - 2] + other.x,
+                    other.collLines[other.collLines.length - 1] + other.y,
+                    other.collLines[0] + other.x,
+                    other.collLines[1] + other.y
                     )) {
                         return true;
-                    }
+                }
 			}
 		}
 		
@@ -206,6 +222,14 @@
         throttle: false,
         collRadius: 15,
 		collLines: [],
+        updateCollLines: function () {
+            this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
+            this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
+            this.collLines[2] = (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius);
+            this.collLines[3] = (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius);
+            this.collLines[4] = (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius);
+            this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
+        },
         updateState: function(delta) {
             var other;
             var lineInd;
@@ -217,6 +241,7 @@
             
 			oldAngle = this.angle;
 			this.angle += this.angleDelta * delta;
+            this.updateCollLines();
 			// angular collision
 			if (checkCollision(this)) {
 				this.angle = oldAngle;
@@ -258,12 +283,6 @@
             }
             this.x += this.xVel * delta;
             this.y += this.yVel * delta;
-            this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
-            this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
-            this.collLines[2] = (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius);
-            this.collLines[3] = (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius);
-            this.collLines[4] = (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius);
-            this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
 			if (checkCollision(this)) {
 				this.xVel = -this.xVel;
 				this.yVel = -this.yVel;
@@ -317,9 +336,10 @@
     function Asteroid(x, y) {
         var pointInd;
         var angle;
-        var vertexCount = 6;
+        var vertexCount = 10;
         var angleInc = (2 * Math.PI) / vertexCount;
         var minRadius = 10;
+        var maxRadius = 50;
         var radius;
         
         this.x = x;
@@ -327,7 +347,10 @@
         // Generate polygon points
         for (pointInd = 0; pointInd < vertexCount; pointInd++) {
             angle = pointInd * angleInc + Math.random() * (angleInc - .01);
-            radius = minRadius + Math.random() * (this.collRadius - minRadius);
+            radius = minRadius + Math.random() * (maxRadius - minRadius);
+            if (radius > this.collRadius) {
+                this.collRadius = radius;
+            }
             this.collLines.push(Math.round(Math.cos(angle) * radius));
             this.collLines.push(Math.round(Math.sin(angle) * radius));
         }
@@ -336,7 +359,7 @@
         constructor: Asteroid,
         x: 0,
         y: 0,
-        collRadius: 50,
+        collRadius: 0,
 		blipColor: "#777777",
         collLines: [],
         updateState: function () {
@@ -357,11 +380,13 @@
             
             CTX.beginPath();
             CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-                CANVAS.height / 2 + (this.y - screenY) + this.collLines[1]);
+                CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
             for (index = 2; index < this.collLines.length; index += 2) {
                 CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
-                    CANVAS.height / 2 + (this.y - screenY) + this.collLines[index + 1]);
+                    CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
             }
+            CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+                    CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
             CTX.fillStyle = "#AAAAAA";
             CTX.fill();
         }
