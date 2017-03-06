@@ -245,6 +245,7 @@
 			// angular collision
 			if (checkCollision(this)) {
 				this.angle = oldAngle;
+				this.updateCollLines();
 			}
             if (this.throttle) {
                 this.xVelDelta = this.accel * Math.cos(this.angle + Math.PI / 2);
@@ -309,17 +310,6 @@
         draw: function() {
             var xCenter = CANVAS.width / 2 + (this.x - screenX);
             var yCenter = CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2);
-
-            // Draw a triangle to represent the character
-            /*
-            CTX.beginPath();
-            CTX.moveTo(xCenter + Math.cos(Math.PI / 2 + this.angle) * this.collRadius,
-                yCenter + Math.sin(-Math.PI / 2 - this.angle) * this.collRadius);
-            CTX.lineTo(xCenter + (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius),
-                yCenter + (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius));
-            CTX.lineTo(xCenter + (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius),
-                yCenter + (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius));
-           */
             var index;
             
             CTX.beginPath();
