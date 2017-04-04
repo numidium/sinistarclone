@@ -19,11 +19,9 @@
 	var MAX_SCREEN_BOUND_Y = 50;
 	var screenBoundX;
 	var screenBoundY;
-	var colliderLib = {};
     function mainLoop(timeStamp) {
         var entIndex;
 		var curEnt;
-		var curEntColl;
 		var mmX; // minimap x, y
 		var mmY;
         
@@ -42,7 +40,6 @@
 		// Draw entities
         for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
-			curEntColl = colliderLib[curEnt.image];
             entities[entIndex].draw();
         }
 		// Draw HUD
@@ -193,21 +190,10 @@
 		return false;
 	};
     // Objects
-	function ImgColliderPair(imgID) {
-		this.image = imgID;
-	};
-	ImgColliderPair.prototype = {
-		image: "",
-		imgWidth: 0,
-		imgHeight: 0,
-		collRadius: 0,
-		collisionLines: []
-	};
     function Player() {};
     Player.prototype = {
         x: 0,
         y: 0,
-		image: "player",
 		imgWidth: 0,
 		imgHeight: 0,
 		blipColor: "#FFFFFF",
@@ -334,6 +320,7 @@
         
         this.x = x;
         this.y = y;
+		this.collLines = [];
         // Generate polygon points
         for (pointInd = 0; pointInd < vertexCount; pointInd++) {
             angle = pointInd * angleInc + Math.random() * (angleInc - .01);
@@ -381,6 +368,54 @@
             CTX.fill();
         }
     };
+	function Worker(x, y) {
+		this.x = x;
+		this.y = y;
+	};
+    Worker.prototype = {
+        x: 0,
+        y: 0,
+		imgWidth: 0,
+		imgHeight: 0,
+		blipColor: "#FF0000",
+        angle: 0,
+        xVel: 0,
+        yVel: 0,
+        xVelDelta: 0,
+        yVelDelta: 0,
+		accel: .0004,
+        angleDelta: 0,
+        maxVel: .3,
+        throttle: false,
+        collRadius: 13,
+		collLines: [],
+        updateCollLines: function () {
+            this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
+            this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
+            this.collLines[2] = (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius);
+            this.collLines[3] = (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius);
+            this.collLines[4] = (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius);
+            this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
+        },
+		updateState: function () {
+			this.updateCollLines();
+		},
+		draw: function () {
+			var index;
+			
+			CTX.beginPath();
+			CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+				CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
+			for (index = 2; index < this.collLines.length; index += 2) {
+				CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
+					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
+			}
+			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
+			CTX.fillStyle = "#FF0000";
+			CTX.fill();
+		}
+	}
     
     // Setup
     playerRef = new Player();
@@ -389,7 +424,6 @@
 	screenY = playerRef.y;
 	CTX.lineWidth = 1;
 	// Scatter some asteroids around the player
-    /*
 	for (index = 0; index < 80; index++) {
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
@@ -401,8 +435,8 @@
 			entRef.x += entRef.collRadius;
 		}
 	}
-    */
-    entities.push(new Asteroid(200, 200));
+    //entities.push(new Asteroid(200, 200));
+	entities.push(new Worker(300, 300));
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
     requestAnimationFrame(mainLoop); // Begin loop
