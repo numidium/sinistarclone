@@ -10,6 +10,12 @@
 	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolating
     var lastFrameTimestamp = 0;
     var entities = [];
+    var asteroids;
+    var asteroidCount = 0;
+    var crystals;
+    var crystalCount = 0;
+    var workers;
+    var workerCount = 0;
     var playerRef;
 	var index;
 	var entRef;
@@ -189,6 +195,9 @@
 		
 		return false;
 	};
+    function getRandomIndex(arr) {
+        return Math.random() * arr.length;
+    }
     // Objects
     function Player() {};
     Player.prototype = {
@@ -389,6 +398,7 @@
         throttle: false,
         collRadius: 13,
 		collLines: [],
+        target: null,
         updateCollLines: function () {
             this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
             this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
@@ -399,6 +409,12 @@
         },
 		updateState: function () {
 			this.updateCollLines();
+            // update target
+            if (crystalCount == 0 && target instanceof Crystal) {
+                target = getRandomIndex(asteroids);
+            } else if (crystalCount > 0 && target instanceof Asteroid) {
+                target = getRandomIndex(crystals);
+            }
 		},
 		draw: function () {
 			var index;
@@ -416,6 +432,14 @@
 			CTX.fill();
 		}
 	}
+    function Crystal(x, y) {
+        this.x = x;
+        this.y = y;
+    };
+    Crystal.prototype = {
+        x: 0,
+        y: 0
+    };
     
     // Setup
     playerRef = new Player();
@@ -424,19 +448,23 @@
 	screenY = playerRef.y;
 	CTX.lineWidth = 1;
 	// Scatter some asteroids around the player
-	for (index = 0; index < 80; index++) {
+    asteroids = new Array(50);
+	for (index = 0; index < 50; index++) {
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
-			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
-			["asteroid1", "asteroid2"][Math.round(Math.random())]));
+			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
 		entRef = entities[entities.length - 1];
 		// move out of the way if on top of the player
 		if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
 			entRef.x += entRef.collRadius;
 		}
+        // register each asteroid
+        asteroids[1 + index] = entRef;
+        asteroidCount++;
 	}
-    //entities.push(new Asteroid(200, 200));
+    crystals = new Array(50);
 	entities.push(new Worker(300, 300));
+    workerCount++;
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
     requestAnimationFrame(mainLoop); // Begin loop
