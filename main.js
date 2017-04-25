@@ -198,6 +198,68 @@
     function getRandomIndex(arr) {
         return Math.random() * arr.length;
     }
+	function moveSelf(delta) {
+		var other;
+		var lineInd;
+		var collX1;
+		var collX2;
+		var collY;
+		var oldAngle;
+		var velSign;
+		
+		oldAngle = this.angle;
+		this.angle += this.angleDelta * delta;
+		this.updateCollLines();
+		// angular collision
+		if (checkCollision(this)) {
+			this.angle = oldAngle;
+			this.updateCollLines();
+		}
+		if (this.throttle) {
+			this.xVelDelta = this.accel * Math.cos(this.angle + Math.PI / 2);
+			this.yVelDelta = this.accel * Math.sin(-(this.angle + Math.PI / 2));
+		} else {
+			// slow to a stop
+			if (Math.abs(this.xVel) > this.accel) {
+				this.velSign = this.xVel >= 0 ? -1 : 1;
+				this.xVelDelta = this.velSign * (this.accel / 3);
+			} else {
+				this.xVelDelta = 0;
+				this.xVel = 0;
+			}
+			if (Math.abs(this.yVel) > this.accel) {
+				this.velSign = this.yVel >= 0 ? -1 : 1;
+				this.yVelDelta = this.velSign * (this.accel / 3);
+			} else {
+				this.yVelDelta = 0;
+				this.yVel = 0;
+			}
+		}
+		// Velocity is in units of pixels per millisecond.
+		this.xVel += this.xVelDelta * delta;
+		this.yVel += this.yVelDelta * delta;
+		if (this.xVel > this.maxVel) {
+			this.xVel = this.maxVel;
+		}
+		if (this.yVel > this.maxVel) {
+			this.yVel = this.maxVel;
+		}
+		if (this.xVel < -this.maxVel) {
+			this.xVel = -this.maxVel;
+		}
+		if (this.yVel < -this.maxVel) {
+			this.yVel = -this.maxVel;
+		}
+		this.x += this.xVel * delta;
+		this.y += this.yVel * delta;
+		if (checkCollision(this)) {
+			this.xVel = -this.xVel;
+			this.yVel = -this.yVel;
+			// bounce away cleanly
+			this.x += this.xVel * delta;
+			this.y += this.yVel * delta;
+		}
+	}
     // Objects
     function Player() {};
     Player.prototype = {
@@ -226,66 +288,7 @@
             this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
         },
         updateState: function(delta) {
-            var other;
-            var lineInd;
-            var collX1;
-            var collX2;
-            var collY;
-			var oldAngle;
-			var velSign;
-            
-			oldAngle = this.angle;
-			this.angle += this.angleDelta * delta;
-            this.updateCollLines();
-			// angular collision
-			if (checkCollision(this)) {
-				this.angle = oldAngle;
-				this.updateCollLines();
-			}
-            if (this.throttle) {
-                this.xVelDelta = this.accel * Math.cos(this.angle + Math.PI / 2);
-                this.yVelDelta = this.accel * Math.sin(-(this.angle + Math.PI / 2));
-            } else {
-				// slow to a stop
-				if (Math.abs(this.xVel) > this.accel) {
-					this.velSign = this.xVel >= 0 ? -1 : 1;
-					this.xVelDelta = this.velSign * (this.accel / 3);
-				} else {
-					this.xVelDelta = 0;
-					this.xVel = 0;
-				}
-				if (Math.abs(this.yVel) > this.accel) {
-					this.velSign = this.yVel >= 0 ? -1 : 1;
-					this.yVelDelta = this.velSign * (this.accel / 3);
-				} else {
-					this.yVelDelta = 0;
-					this.yVel = 0;
-				}
-            }
-            // Velocity is in units of pixels per millisecond.
-            this.xVel += this.xVelDelta * delta;
-            this.yVel += this.yVelDelta * delta;
-            if (this.xVel > this.maxVel) {
-                this.xVel = this.maxVel;
-            }
-            if (this.yVel > this.maxVel) {
-                this.yVel = this.maxVel;
-            }
-            if (this.xVel < -this.maxVel) {
-                this.xVel = -this.maxVel;
-            }
-            if (this.yVel < -this.maxVel) {
-                this.yVel = -this.maxVel;
-            }
-            this.x += this.xVel * delta;
-            this.y += this.yVel * delta;
-			if (checkCollision(this)) {
-				this.xVel = -this.xVel;
-				this.yVel = -this.yVel;
-				// bounce away cleanly
-				this.x += this.xVel * delta;
-				this.y += this.yVel * delta;
-			}
+			moveSelf.call(this, delta);
 			// make the screen track the player
 			screenBoundX = Math.abs((this.xVel / this.maxVel)) * MAX_SCREEN_BOUND_X;
 			screenBoundY = Math.abs((this.yVel / this.maxVel)) * MAX_SCREEN_BOUND_Y;
@@ -407,14 +410,16 @@
             this.collLines[4] = (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius);
             this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
         },
-		updateState: function () {
+		updateState: function (delta) {
 			this.updateCollLines();
             // update target
-            if (crystalCount == 0 && target instanceof Crystal) {
-                target = getRandomIndex(asteroids);
-            } else if (crystalCount > 0 && target instanceof Asteroid) {
-                target = getRandomIndex(crystals);
+            if (crystalCount == 0 && this.target instanceof Crystal) {
+                this.target = getRandomIndex(asteroids);
+            } else if (crystalCount > 0 && this.target instanceof Asteroid) {
+                this.target = getRandomIndex(crystals);
             }
+			// movement
+			moveSelf.call(this, delta);
 		},
 		draw: function () {
 			var index;
