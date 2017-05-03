@@ -196,14 +196,11 @@
 		return false;
 	};
     function getRandomIndex(arr) {
-        return Math.random() * arr.length;
+		var index = Math.round(Math.random() * (arr.length - 1));
+		
+        return arr[index];
     }
 	function moveSelf(delta) {
-		var other;
-		var lineInd;
-		var collX1;
-		var collX2;
-		var collY;
 		var oldAngle;
 		var velSign;
 		
@@ -328,6 +325,7 @@
         var angleInc = (2 * Math.PI) / vertexCount;
         var minRadius = 10;
         var maxRadius = 50;
+		var maxAppliedRadius = maxRadius;
         var radius;
         
         this.x = x;
@@ -337,6 +335,10 @@
         for (pointInd = 0; pointInd < vertexCount; pointInd++) {
             angle = pointInd * angleInc + Math.random() * (angleInc - .01);
             radius = minRadius + Math.random() * (maxRadius - minRadius);
+			if (radius < maxAppliedRadius) {
+				radius = maxAppliedRadius;
+				maxAppliedRadius -= 10;
+			}
             if (radius > this.collRadius) {
                 this.collRadius = radius;
             }
@@ -370,7 +372,7 @@
             CTX.beginPath();
             CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
                 CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
-            for (index = 2; index < this.collLines.length; index += 2) {
+            for (index = 2; index < this.collLines.length - 1; index += 2) {
                 CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
                     CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
             }
@@ -383,6 +385,7 @@
 	function Worker(x, y) {
 		this.x = x;
 		this.y = y;
+		this.target = getRandomIndex(asteroids);
 	};
     Worker.prototype = {
         x: 0,
@@ -402,6 +405,8 @@
         collRadius: 13,
 		collLines: [],
         target: null,
+		angleToTarget: 0,
+		turnSpeed: .005,
         updateCollLines: function () {
             this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
             this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
@@ -411,6 +416,9 @@
             this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
         },
 		updateState: function (delta) {
+			var angleToTarget = 0;
+			
+			this.target = playerRef;
 			this.updateCollLines();
             // update target
             if (crystalCount == 0 && this.target instanceof Crystal) {
@@ -418,8 +426,17 @@
             } else if (crystalCount > 0 && this.target instanceof Asteroid) {
                 this.target = getRandomIndex(crystals);
             }
+			angleToTarget = this.getAngleTo(this.target);
 			// movement
+			if (this.angle % (2 * Math.PI) < angleToTarget % (2 * Math.PI)) {
+				this.angle += this.turnSpeed * delta;
+			} else if (this.angle % (2 * Math.PI) > angleToTarget % (2 * Math.PI)) {
+				this.angle -= this.turnSpeed * delta;
+			}
 			moveSelf.call(this, delta);
+		},
+		getAngleTo: function (other) {
+			return Math.atan2(-(other.y - this.y), other.x - this.x) - Math.PI / 2;
 		},
 		draw: function () {
 			var index;
@@ -458,13 +475,13 @@
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
-		entRef = entities[entities.length - 1];
+		entRef = entities[index + 1];
 		// move out of the way if on top of the player
 		if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
 			entRef.x += entRef.collRadius;
 		}
         // register each asteroid
-        asteroids[1 + index] = entRef;
+        asteroids[index] = entRef;
         asteroidCount++;
 	}
     crystals = new Array(50);
