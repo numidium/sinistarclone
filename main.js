@@ -174,7 +174,7 @@
                             other.collLines[oLineInd + 2] + other.x,
                             other.collLines[oLineInd + 3] + other.y
                             )) {
-                                return true;
+                                return other;
                         }
                     }
                 }
@@ -188,21 +188,20 @@
                     other.collLines[0] + other.x,
                     other.collLines[1] + other.y
                     )) {
-                        return true;
+                        return other;
                 }
 			}
 		}
 		
-		return false;
+		return null;
 	};
     function getRandomIndex(arr) {
-		var index = Math.round(Math.random() * (arr.length - 1));
-		
-        return arr[index];
+        return arr[Math.round(Math.random() * (arr.length - 1))];
     };
 	function moveSelf(delta) {
 		var oldAngle;
 		var velSign;
+		var other;
 		
 		oldAngle = this.angle;
 		this.angle += this.angleDelta * delta;
@@ -249,9 +248,26 @@
 		}
 		this.x += this.xVel * delta;
 		this.y += this.yVel * delta;
-		if (checkCollision(this)) {
+		other = checkCollision(this);
+		if (other) {
 			this.xVel = -this.xVel;
 			this.yVel = -this.yVel;
+			if (other instanceof Asteroid) { // asteroid bumped me
+				if ((this.xVel > 0 && this.xVel < other.xVel) ||
+					(this.xVel < 0 && -1 * this.xVel < other.xVel) ||
+					(this.xVel < 0 && this.xVel > other.xVel) ||
+					(this.xVel > 0 && -1 * this.xVel > other.xVel) ||
+					this.xVel == 0) {
+					this.xVel += other.xVel * 2;
+				}
+				if ((this.yVel > 0 && this.yVel < other.yVel) ||
+					(this.yVel < 0 && -1 * this.yVel < other.yVel) ||
+					(this.yVel < 0 && this.yVel > other.yVel) ||
+					(this.yVel > 0 && -1 * this.yVel > other.yVel) ||
+					this.yVel == 0) {
+					this.yVel += other.yVel * 2;
+				}				
+			}
 			// bounce away cleanly
 			this.x += this.xVel * delta;
 			this.y += this.yVel * delta;
@@ -343,6 +359,8 @@
         
         this.x = x;
         this.y = y;
+		this.xVel = -.1 + Math.random() * .2;
+		this.yVel = -.1 + Math.random() * .2;
 		this.collLines = [];
         // Generate polygon points
         for (pointInd = 0; pointInd < vertexCount; pointInd++) {
@@ -366,7 +384,9 @@
         collRadius: 0,
 		blipColor: "#777777",
         collLines: [],
-        updateState: function () {
+        updateState: function (delta) {
+			this.x += this.xVel * delta;
+			this.y += this.yVel * delta;
 			// wrap around effective playing field
 			if (this.x - playerRef.x > MAX_DISTANCE) {
 				this.x = playerRef.x - MAX_DISTANCE + 2;
@@ -512,8 +532,10 @@
         asteroidCount++;
 	}
     crystals = new Array(50);
+	/*
 	entities.push(new Worker(300, 300));
     workerCount++;
+	*/
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
     requestAnimationFrame(mainLoop); // Begin loop
