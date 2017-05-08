@@ -199,7 +199,7 @@
 		var index = Math.round(Math.random() * (arr.length - 1));
 		
         return arr[index];
-    }
+    };
 	function moveSelf(delta) {
 		var oldAngle;
 		var velSign;
@@ -256,7 +256,20 @@
 			this.x += this.xVel * delta;
 			this.y += this.yVel * delta;
 		}
-	}
+	};
+	function wrapAngle(angle) {
+		var periodAngle;
+		
+		if (angle > 2 * Math.PI) {
+			periodAngle = angle - 2 * Math.PI;
+		} else if (angle < 0) {
+			periodAngle = angle + 2 * Math.PI;
+		} else {
+			periodAngle = angle;
+		}
+		
+		return periodAngle;
+	};
     // Objects
     function Player() {};
     Player.prototype = {
@@ -401,12 +414,12 @@
 		accel: .0004,
         angleDelta: 0,
         maxVel: .3,
-        throttle: false,
+        throttle: true,
         collRadius: 13,
 		collLines: [],
         target: null,
 		angleToTarget: 0,
-		turnSpeed: .005,
+		turnSpeed: .003,
         updateCollLines: function () {
             this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
             this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
@@ -426,17 +439,31 @@
             } else if (crystalCount > 0 && this.target instanceof Asteroid) {
                 this.target = getRandomIndex(crystals);
             }
-			angleToTarget = this.getAngleTo(this.target);
 			// movement
-			if (this.angle % (2 * Math.PI) < angleToTarget % (2 * Math.PI)) {
-				this.angle += this.turnSpeed * delta;
-			} else if (this.angle % (2 * Math.PI) > angleToTarget % (2 * Math.PI)) {
-				this.angle -= this.turnSpeed * delta;
+			this.angle = wrapAngle(this.angle);
+			angleToTarget = this.getAngleTo(this.target);
+			// find the shortest arc and turn towards the target
+			if (Math.abs(this.angle - angleToTarget) > Math.PI) {
+				if (this.angle > angleToTarget) {
+					this.angle += this.turnSpeed * delta;
+				} else {
+					this.angle -= this.turnSpeed * delta;
+				}
+			} else {
+				if (this.angle > angleToTarget) {
+					this.angle -= this.turnSpeed * delta;
+				} else {
+					this.angle += this.turnSpeed * delta;
+				}
 			}
 			moveSelf.call(this, delta);
 		},
 		getAngleTo: function (other) {
-			return Math.atan2(-(other.y - this.y), other.x - this.x) - Math.PI / 2;
+			var angleTo = Math.atan2(-(other.y - this.y), other.x - this.x) - Math.PI / 2;
+			
+			angleTo = wrapAngle(angleTo);
+			
+			return angleTo;
 		},
 		draw: function () {
 			var index;
