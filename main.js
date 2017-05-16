@@ -162,33 +162,21 @@
 			// There are algorithms that can do faster polygonal collsion detection.
 			// Maybe replace this with one of those later.
 			if (distance(subject.x, subject.y, other.x, other.y) < subject.collRadius + other.collRadius) {
-                for (sLineInd = 0; sLineInd < subject.collLines.length - 3; sLineInd += 2) {
-                    for (oLineInd = 0; oLineInd < other.collLines.length - 3; oLineInd += 2) {
+                for (sLineInd = 0; sLineInd < subject.collLines.length; sLineInd += 2) {
+                    for (oLineInd = 0; oLineInd < other.collLines.length; oLineInd += 2) {
                         if (lineCheck(
                             subject.collLines[sLineInd] + subject.x,
                             subject.collLines[sLineInd + 1] + subject.y,
-                            subject.collLines[sLineInd + 2] + subject.x,
-                            subject.collLines[sLineInd + 3] + subject.y,
+                            subject.collLines[(sLineInd + 2) % subject.collLines.length] + subject.x,
+                            subject.collLines[(sLineInd + 3) % subject.collLines.length] + subject.y,
                             other.collLines[oLineInd] + other.x,
                             other.collLines[oLineInd + 1] + other.y,
-                            other.collLines[oLineInd + 2] + other.x,
-                            other.collLines[oLineInd + 3] + other.y
+                            other.collLines[(oLineInd + 2) % other.collLines.length] + other.x,
+                            other.collLines[(oLineInd + 3) % other.collLines.length] + other.y
                             )) {
                                 return other;
                         }
                     }
-                }
-                if (lineCheck(
-                    subject.collLines[subject.collLines.length - 2] + subject.x,
-                    subject.collLines[subject.collLines.length - 1] + subject.y,
-                    subject.collLines[0] + subject.x,
-                    subject.collLines[1] + subject.y,
-                    other.collLines[other.collLines.length - 2] + other.x,
-                    other.collLines[other.collLines.length - 1] + other.y,
-                    other.collLines[0] + other.x,
-                    other.collLines[1] + other.y
-                    )) {
-                        return other;
                 }
 			}
 		}
@@ -303,7 +291,7 @@
         angleDelta: 0,
         maxVel: .3,
         throttle: false,
-        collRadius: 15,
+        collRadius: 50,
 		collLines: [],
         updateCollLines: function () {
             this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
@@ -418,7 +406,8 @@
 	function Worker(x, y) {
 		this.x = x;
 		this.y = y;
-		this.target = getRandomIndex(asteroids);
+		this.target = playerRef;
+		this.collLines = new Array(6);
 	};
     Worker.prototype = {
         x: 0,
@@ -451,14 +440,15 @@
 		updateState: function (delta) {
 			var angleToTarget = 0;
 			
-			this.target = playerRef;
 			this.updateCollLines();
             // update target
-            if (crystalCount == 0 && this.target instanceof Crystal) {
+            if (crystalCount == 0 && (this.target instanceof Crystal || this.target == playerRef)) {
                 this.target = getRandomIndex(asteroids);
-            } else if (crystalCount > 0 && this.target instanceof Asteroid) {
+            } else if (this.target instanceof Asteroid && crystalCount > 0) {
                 this.target = getRandomIndex(crystals);
-            }
+            } else if (distance(this.x, this.y, this.target.x, this.target.y) < 20) {
+				this.target = getRandomIndex(asteroids);
+			}
 			// movement
 			this.angle = wrapAngle(this.angle);
 			angleToTarget = this.getAngleTo(this.target);
@@ -532,10 +522,16 @@
         asteroidCount++;
 	}
     crystals = new Array(50);
-	/*
 	entities.push(new Worker(300, 300));
     workerCount++;
-	*/
+	entities.push(new Worker(320, 320));
+    workerCount++;
+	entities.push(new Worker(340, 340));
+    workerCount++;
+	entities.push(new Worker(360, 360));
+    workerCount++;
+	entities.push(new Worker(380, 380));
+    workerCount++;
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
     requestAnimationFrame(mainLoop); // Begin loop
