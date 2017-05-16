@@ -291,7 +291,7 @@
         angleDelta: 0,
         maxVel: .3,
         throttle: false,
-        collRadius: 50,
+        collRadius: 15,
 		collLines: [],
         updateCollLines: function () {
             this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
