@@ -144,40 +144,46 @@
 		
 		return false;
 	};
+	function collidingWith(subject, other) {
+		var sLineInd;
+		var oLineInd;
+		
+		// There are algorithms that can do faster polygonal collsion detection.
+		// Maybe replace this with one of those later.
+		if (distance(subject.x, subject.y, other.x, other.y) < subject.collRadius + other.collRadius) {
+			for (sLineInd = 0; sLineInd < subject.collLines.length; sLineInd += 2) {
+				for (oLineInd = 0; oLineInd < other.collLines.length; oLineInd += 2) {
+					if (lineCheck(
+						subject.collLines[sLineInd] + subject.x,
+						subject.collLines[sLineInd + 1] + subject.y,
+						subject.collLines[(sLineInd + 2) % subject.collLines.length] + subject.x,
+						subject.collLines[(sLineInd + 3) % subject.collLines.length] + subject.y,
+						other.collLines[oLineInd] + other.x,
+						other.collLines[oLineInd + 1] + other.y,
+						other.collLines[(oLineInd + 2) % other.collLines.length] + other.x,
+						other.collLines[(oLineInd + 3) % other.collLines.length] + other.y
+						)) {
+							return other;
+					}
+				}
+			}
+		}
+		
+		return null;
+	};
 	function checkCollision(subject) {
 		var entIndex;
 		var other;
-		var otherColl;
-		var sLineInd;
-		var oLineInd;
-		var collX1;
-		var collX2;
-		var collY;
+		var ret;
 		
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			other = entities[entIndex];
 			if (other == subject) {
 				continue;
 			}
-			// There are algorithms that can do faster polygonal collsion detection.
-			// Maybe replace this with one of those later.
-			if (distance(subject.x, subject.y, other.x, other.y) < subject.collRadius + other.collRadius) {
-                for (sLineInd = 0; sLineInd < subject.collLines.length; sLineInd += 2) {
-                    for (oLineInd = 0; oLineInd < other.collLines.length; oLineInd += 2) {
-                        if (lineCheck(
-                            subject.collLines[sLineInd] + subject.x,
-                            subject.collLines[sLineInd + 1] + subject.y,
-                            subject.collLines[(sLineInd + 2) % subject.collLines.length] + subject.x,
-                            subject.collLines[(sLineInd + 3) % subject.collLines.length] + subject.y,
-                            other.collLines[oLineInd] + other.x,
-                            other.collLines[oLineInd + 1] + other.y,
-                            other.collLines[(oLineInd + 2) % other.collLines.length] + other.x,
-                            other.collLines[(oLineInd + 3) % other.collLines.length] + other.y
-                            )) {
-                                return other;
-                        }
-                    }
-                }
+			ret = collidingWith(subject, other);
+			if (ret) {
+				return ret;
 			}
 		}
 		
@@ -257,8 +263,10 @@
 				}				
 			}
 			// bounce away cleanly
+			do {
 			this.x += this.xVel * delta;
 			this.y += this.yVel * delta;
+			} while (collidingWith(this, other));
 		}
 	};
 	function wrapAngle(angle) {
@@ -446,7 +454,7 @@
                 this.target = getRandomIndex(asteroids);
             } else if (this.target instanceof Asteroid && crystalCount > 0) {
                 this.target = getRandomIndex(crystals);
-            } else if (distance(this.x, this.y, this.target.x, this.target.y) < 20) {
+            } else if (distance(this.x, this.y, this.target.x, this.target.y) < 200) {
 				this.target = getRandomIndex(asteroids);
 			}
 			// movement
