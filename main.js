@@ -14,8 +14,13 @@
     var asteroidCount = 0;
     var crystals;
     var crystalCount = 0;
-    var workers;
-    var workerCount = 0;
+    var miners;
+    var minerCount = 0;
+	var shooters;
+	var shooterCount = 0;
+	var enemyBullets;
+	var enemyBulletCount = 0;
+	var enemyBulletInd = 0;
     var playerRef;
 	var index;
 	var entRef;
@@ -37,7 +42,9 @@
         // Interpolate state updates
         while (timeDelta >= TIMESTEP) {
             for (entIndex = 0; entIndex < entities.length; entIndex++) {
-                entities[entIndex].updateState(TIMESTEP);
+				if (entities[entIndex].active) {
+					entities[entIndex].updateState(TIMESTEP);
+				}
             }
             timeDelta -= TIMESTEP;
         }
@@ -46,7 +53,9 @@
 		// Draw entities
         for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
-            entities[entIndex].draw();
+			if (curEnt.active) {
+				entities[entIndex].draw();
+			}
         }
 		// Draw HUD
 		CTX.fillStyle = "#000090";
@@ -64,6 +73,9 @@
 		// Draw minimap blips
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			curEnt = entities[entIndex];
+			if (!curEnt.active || !curEnt.blipColor) {
+				continue;
+			}
 			mmX = mmLeft + HUD_HEIGHT / 2 - 1 + (curEnt.x - playerRef.x) / MINIMAP_SCALE;
 			if (mmX - 1 < mmLeft || mmX + 1 >= mmLeft + HUD_HEIGHT) {
 				continue;
@@ -178,7 +190,7 @@
 		
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			other = entities[entIndex];
-			if (other == subject) {
+			if (other == subject || !other.active) {
 				continue;
 			}
 			ret = collidingWith(subject, other);
@@ -196,6 +208,7 @@
 		var oldAngle;
 		var velSign;
 		var other;
+		var angleToOther;
 		
 		oldAngle = this.angle;
 		this.angle += this.angleDelta * delta;
@@ -252,36 +265,41 @@
 					(this.xVel < 0 && this.xVel > other.xVel) ||
 					(this.xVel > 0 && -1 * this.xVel > other.xVel) ||
 					this.xVel == 0) {
-					this.xVel += other.xVel * 2;
+					this.xVel = other.xVel * 2;
 				}
 				if ((this.yVel > 0 && this.yVel < other.yVel) ||
 					(this.yVel < 0 && -1 * this.yVel < other.yVel) ||
 					(this.yVel < 0 && this.yVel > other.yVel) ||
 					(this.yVel > 0 && -1 * this.yVel > other.yVel) ||
 					this.yVel == 0) {
-					this.yVel += other.yVel * 2;
+					this.yVel = other.yVel * 2;
 				}				
 			}
 			// bounce away cleanly
 			do {
-			this.x += this.xVel * delta;
-			this.y += this.yVel * delta;
+				angleToOther = getAngleTo(other, this);
+				this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
+				this.y -= Math.abs(this.yVel) * Math.sin(angleToOther + Math.PI / 2) * delta;
 			} while (collidingWith(this, other));
 		}
 	};
 	function wrapAngle(angle) {
-		var periodAngle;
-		
 		if (angle > 2 * Math.PI) {
-			periodAngle = angle - 2 * Math.PI;
-		} else if (angle < 0) {
-			periodAngle = angle + 2 * Math.PI;
-		} else {
-			periodAngle = angle;
+			return angle - 2 * Math.PI;
+		}
+		if (angle < 0) {
+			return angle + 2 * Math.PI;
 		}
 		
-		return periodAngle;
+		return angle;
 	};
+	function getAngleTo(self, other) {
+		var angleTo = Math.atan2(-(other.y - self.y), other.x - self.x) - Math.PI / 2;
+		
+		angleTo = wrapAngle(angleTo);
+		
+		return angleTo;
+	}
     // Objects
     function Player() {};
     Player.prototype = {
@@ -301,6 +319,7 @@
         throttle: false,
         collRadius: 15,
 		collLines: [],
+		active: true,
         updateCollLines: function () {
             this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
             this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
@@ -380,6 +399,7 @@
         collRadius: 0,
 		blipColor: "#777777",
         collLines: [],
+		active: true,
         updateState: function (delta) {
 			this.x += this.xVel * delta;
 			this.y += this.yVel * delta;
@@ -411,13 +431,13 @@
             CTX.fill();
         }
     };
-	function Worker(x, y) {
+	function Miner(x, y) {
 		this.x = x;
 		this.y = y;
 		this.target = playerRef;
 		this.collLines = new Array(6);
 	};
-    Worker.prototype = {
+    Miner.prototype = {
         x: 0,
         y: 0,
 		imgWidth: 0,
@@ -428,15 +448,16 @@
         yVel: 0,
         xVelDelta: 0,
         yVelDelta: 0,
-		accel: .0004,
+		accel: .0005,
         angleDelta: 0,
-        maxVel: .3,
+        maxVel: .25,
         throttle: true,
         collRadius: 13,
 		collLines: [],
         target: null,
 		angleToTarget: 0,
-		turnSpeed: .003,
+		turnSpeed: .005,
+		active: true,
         updateCollLines: function () {
             this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
             this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
@@ -448,7 +469,6 @@
 		updateState: function (delta) {
 			var angleToTarget = 0;
 			
-			this.updateCollLines();
             // update target
             if (crystalCount == 0 && (this.target instanceof Crystal || this.target == playerRef)) {
                 this.target = getRandomIndex(asteroids);
@@ -459,7 +479,7 @@
 			}
 			// movement
 			this.angle = wrapAngle(this.angle);
-			angleToTarget = this.getAngleTo(this.target);
+			angleToTarget = getAngleTo(this, this.target);
 			// find the shortest arc and turn towards the target
 			if (Math.abs(this.angle - angleToTarget) > Math.PI) {
 				if (this.angle > angleToTarget) {
@@ -476,13 +496,6 @@
 			}
 			moveSelf.call(this, delta);
 		},
-		getAngleTo: function (other) {
-			var angleTo = Math.atan2(-(other.y - this.y), other.x - this.x) - Math.PI / 2;
-			
-			angleTo = wrapAngle(angleTo);
-			
-			return angleTo;
-		},
 		draw: function () {
 			var index;
 			
@@ -498,14 +511,192 @@
 			CTX.fillStyle = "#FF0000";
 			CTX.fill();
 		}
-	}
+	};
+	function Shooter(x, y) {
+		this.x = x;
+		this.y = y;
+		this.target = playerRef;
+		this.collLines = new Array(12);
+		// hexagonal shape
+		this.collLines[0] = Math.cos(this.angle) * this.collRadius;
+		this.collLines[1] = Math.sin(-this.angle) * this.collRadius;
+		this.collLines[2] = Math.cos(Math.PI / 3 + this.angle) * this.collRadius;
+		this.collLines[3] = Math.sin(-Math.PI / 3 - this.angle) * this.collRadius;
+		this.collLines[4] = Math.cos(Math.PI * (2 / 3) + this.angle) * this.collRadius;
+		this.collLines[5] = Math.sin(-Math.PI * (2 / 3) - this.angle) * this.collRadius;
+		this.collLines[6] = Math.cos(Math.PI + this.angle) * this.collRadius;
+		this.collLines[7] = Math.sin(-Math.PI - this.angle) * this.collRadius;
+		this.collLines[8] = Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius;
+		this.collLines[9] = Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius;
+		this.collLines[10] = Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius;
+		this.collLines[11] = Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius;
+	};
+    Shooter.prototype = {
+        x: 0,
+        y: 0,
+		imgWidth: 0,
+		imgHeight: 0,
+		blipColor: "#FF00FF",
+        angle: 0,
+        xVel: 0,
+        yVel: 0,
+        xVelDelta: 0,
+        yVelDelta: 0,
+		accel: .0007,
+        angleDelta: 0,
+        maxVel: .23,
+        throttle: true,
+        collRadius: 17,
+		collLines: [],
+        target: null,
+		angleToTarget: 0,
+		turnSpeed: .002,
+		lastShotTime: 0,
+		coolDown: 1000,
+		active: true,
+        updateCollLines: function () {
+			// doesn't rotate
+        },
+		updateState: function (delta) {
+			var angleToTarget = 0;
+			
+            // update target
+            //if (crystalCount == 0 && (this.target instanceof Crystal || this.target == playerRef)) {
+            //    this.target = getRandomIndex(asteroids);
+            //} else if (this.target instanceof Asteroid && crystalCount > 0) {
+            //    this.target = getRandomIndex(crystals);
+            //} else if (distance(this.x, this.y, this.target.x, this.target.y) < 200) {
+			//	this.target = getRandomIndex(asteroids);
+			//}
+			// movement
+			this.angle = wrapAngle(this.angle);
+			angleToTarget = getAngleTo(this, this.target);
+			// find the shortest arc and turn towards the target
+			if (Math.abs(this.angle - angleToTarget) > Math.PI) {
+				if (this.angle > angleToTarget) {
+					this.angle += this.turnSpeed * delta;
+				} else {
+					this.angle -= this.turnSpeed * delta;
+				}
+			} else {
+				if (this.angle > angleToTarget) {
+					this.angle -= this.turnSpeed * delta;
+				} else {
+					this.angle += this.turnSpeed * delta;
+				}
+			}
+			moveSelf.call(this, delta);
+			// shoot
+			if (distance(this.x, this.y, this.target.x, this.target.y) < 300 &&
+					performance.now() - this.lastShotTime >= this.coolDown) {
+				enemyBullets[enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
+				enemyBulletInd = (enemyBulletInd + 1) % enemyBulletCount;
+				this.lastShotTime = performance.now();
+			}
+		},
+		draw: function () {
+			var index;
+			
+			CTX.beginPath();
+			CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+				CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
+			for (index = 2; index < this.collLines.length; index += 2) {
+				CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
+					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
+			}
+			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
+			CTX.fillStyle = "#AA00AA";
+			CTX.fill();
+		}
+	};
+	function EnemyBullet() {
+	};
+	EnemyBullet.prototype = {
+        x: 0,
+        y: 0,
+        xVel: 0,
+        yVel: 0,
+        xVelDelta: 0,
+        yVelDelta: 0,
+        collRadius: 3,
+		blipColor: null,
+		collLines: [],
+		muzzleVel: .7,
+		birthTime: 0,
+		lifeSpan: 1000,
+		active: false,
+		activate: function (x, y, dir) {
+			this.birthTime = performance.now();
+			this.x = x;
+			this.y = y;
+			this.xVel = Math.cos(dir) * this.muzzleVel;
+			this.yVel = Math.sin(-dir) * this.muzzleVel;
+			this.active = true;
+		},
+		updateState: function (delta) {
+			var now = performance.now();
+			
+			if (now - this.birthTime > this.lifeSpan) {
+				this.active = false;
+				return;
+			}
+			this.x += this.xVel * delta;
+			this.y += this.yVel * delta;
+		},
+		draw: function () {
+			CTX.beginPath();
+			CTX.arc(CANVAS.width / 2 + (this.x - screenX),
+				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY),
+				this.collRadius, 0, 2 * Math.PI);
+			CTX.fillStyle = "#FFFF00";
+			CTX.fill();
+		}
+	};
     function Crystal(x, y) {
         this.x = x;
         this.y = y;
     };
     Crystal.prototype = {
         x: 0,
-        y: 0
+        y: 0,
+        xVel: 0,
+        yVel: 0,
+        xVelDelta: 0,
+        yVelDelta: 0,
+        collRadius: 3,
+		blipColor: null,
+		collLines: [],
+		maxVel: .2,
+		birthTime: 0,
+		lifeSpan: 10000,
+		active: false,
+		activate: function (x, y, dir) {
+			this.birthTime = performance.now();
+			this.x = x;
+			this.y = y;
+			this.xVel = Math.cos(dir) * this.maxVel;
+			this.yVel = Math.sin(-dir) * this.maxVel;
+			this.active = true;
+		},
+		updateState: function (delta) {
+			var now = performance.now();
+			
+			if (now - this.birthTime > this.lifeSpan) {
+				this.active = false;
+				return;
+			}
+			this.x += this.xVel * delta;
+			this.y += this.yVel * delta;
+		},
+		draw: function () {
+			CTX.beginPath();
+			CTX.arc(CANVAS.width / 2 + (this.x - screenX),
+				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY),
+				this.collRadius, 0, 2 * Math.PI);
+			CTX.fillStyle = "#5555FF";
+			CTX.fill();
+		}
     };
     
     // Setup
@@ -529,17 +720,38 @@
         asteroids[index] = entRef;
         asteroidCount++;
 	}
-    crystals = new Array(50);
-	entities.push(new Worker(300, 300));
-    workerCount++;
-	entities.push(new Worker(320, 320));
-    workerCount++;
-	entities.push(new Worker(340, 340));
-    workerCount++;
-	entities.push(new Worker(360, 360));
-    workerCount++;
-	entities.push(new Worker(380, 380));
-    workerCount++;
+    miners = new Array(30);
+	entities.push(new Miner(300, 300));
+	miners.push(entities[entities.length - 1]);
+    minerCount++;
+	entities.push(new Miner(320, 320));
+	miners.push(entities[entities.length - 1]);
+    minerCount++;
+	entities.push(new Miner(340, 340));
+	miners.push(entities[entities.length - 1]);
+    minerCount++;
+	entities.push(new Miner(360, 360));
+	miners.push(entities[entities.length - 1]);
+    minerCount++;
+	entities.push(new Miner(380, 380));
+	miners.push(entities[entities.length - 1]);
+    minerCount++;
+	enemyBullets = new Array(20);
+	for (index = 0; index < 20; index++) {
+		entities.push(new EnemyBullet());
+		enemyBullets[index] = entities[entities.length - 1];
+		enemyBulletCount++;
+	}
+	shooters = new Array(1);
+	entities.push(new Shooter(450, 450));
+	shooters.push(entities[entities.length - 1]);
+	shooterCount++;
+	crystals = new Array(30);
+	for (index = 0; index < 30; index++) {
+		entities.push(new Crystal());
+		crystals[index] = entities[entities.length - 1];
+		crystalCount++;
+	}
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
     requestAnimationFrame(mainLoop); // Begin loop
