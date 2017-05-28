@@ -21,6 +21,9 @@
 	var enemyBullets;
 	var enemyBulletCount = 0;
 	var enemyBulletInd = 0;
+	var playerBullets;
+	var playerBulletCount = 0;
+	var playerBulletInd = 0;
     var playerRef;
 	var index;
 	var entRef;
@@ -100,6 +103,8 @@
             case 39: // right
                 playerRef.angleDelta = -.005;
                 break;
+			case 32: // space
+				playerRef.shooting = true;
             default:
                 break;
         }
@@ -113,6 +118,8 @@
             case 39: // right
                 playerRef.angleDelta = 0;
                 break;
+			case 32: // space
+				playerRef.shooting = false;
             default:
                 break;
         }
@@ -130,31 +137,16 @@
 		
 		return (s >= 0 && s <= 1 && t >= 0 && t <= 1);
 	};
-	function triangleEdgeCheck(obj, other) {
-		var points = [
-					obj.x + Math.cos(Math.PI / 2 + obj.angle) * obj.collRadius,
-					obj.y + Math.sin(-Math.PI / 2 - obj.angle) * obj.collRadius,
-					obj.x + Math.cos(Math.PI * (4 / 3) + obj.angle) * obj.collRadius,
-					obj.y + Math.sin(-Math.PI * (4 / 3) - obj.angle) * obj.collRadius,
-					obj.x + Math.cos(Math.PI * (5 / 3) + obj.angle) * obj.collRadius,
-					obj.y + Math.sin(-Math.PI * (5 / 3) - obj.angle) * obj.collRadius
-				];
-		var pointInd;
+	function circleToLineCheck(x1, y1, x2, y2, cX, cY, r) {
+		var shiftX1 = x1 - cX;
+		var shiftY1 = y1 - cY;
+		var shiftX2 = x2 - cX;
+		var shiftY2 = y2 - cY;
+		var m = (shiftY2 - shiftY1) / (shiftX2 - shiftX1); // slope
+		var b = shiftY1 - m * shiftX1; // b = y - mx
+		var underRadical = Math.pow(r, 2) * Math.pow(m, 2) + Math.pow(r, 2) - Math.pow(b, 2);
 		
-		// Make first two lines
-		for (pointInd = 0; pointInd < 3; pointInd += 2) {	
-			if (lineCheck(points[pointInd], points[pointInd + 1],
-				points[pointInd + 2], points[pointInd + 3],
-				otherX1, otherX2, otherY)) {
-				return true;
-			}
-		}
-		// Complete the triangle
-		if (lineCheck(points[4], points[5], points[0], points[1], otherX1, otherX2, otherY)) {
-			return true;
-		}
-		
-		return false;
+		return !(underRadical < 0);
 	};
 	function collidingWith(subject, other) {
 		var sLineInd;
@@ -183,6 +175,27 @@
 		
 		return null;
 	};
+	function circleCollidingWith(subject, other) {
+		var lineInd;
+		
+		if (distance(subject.x, subject.y, other.x, other.y) < subject.collRadius + other.collRadius) {
+			for (lineInd = 0; lineInd < other.collLines.length; lineInd += 2) {
+				if (circleToLineCheck(
+					other.collLines[lineInd] + other.x,
+					other.collLines[lineInd + 1] + other.y,
+					other.collLines[(lineInd + 2) % other.collLines.length] + other.x,
+					other.collLines[(lineInd + 3) % other.collLines.length] + other.y,
+					subject.x,
+					subject.y,
+					subject.collRadius
+				)) {
+					return other;
+				}
+			}
+		}
+		
+		return null;
+	};
 	function checkCollision(subject) {
 		var entIndex;
 		var other;
@@ -190,7 +203,7 @@
 		
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			other = entities[entIndex];
-			if (other == subject || !other.active) {
+			if (!other.active || other == subject) {
 				continue;
 			}
 			ret = collidingWith(subject, other);
@@ -276,6 +289,8 @@
 				}				
 			}
 			// bounce away cleanly
+			// BUG: if an asteroid bumps something which also bumps into something
+			// else in the same tick, the following block will loop infinitely.
 			do {
 				angleToOther = getAngleTo(other, this);
 				this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
@@ -320,6 +335,9 @@
         collRadius: 15,
 		collLines: [],
 		active: true,
+		shooting: false,
+		lastShotTime: 0,
+		coolDown: 250,
         updateCollLines: function () {
             this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
             this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
@@ -344,6 +362,12 @@
 			}
 			else if (this.y - screenY < -screenBoundY) {
 				screenY = this.y + screenBoundY;
+			}
+			// shoot
+			if (this.shooting && performance.now() - this.lastShotTime >= this.coolDown) {
+				playerBullets[playerBulletInd].activate(this.x, this.y, this.angle + Math.PI / 2);
+				playerBulletInd = (playerBulletInd + 1) % playerBulletCount;
+				this.lastShotTime = performance.now();
 			}
         },
         draw: function() {
@@ -436,6 +460,7 @@
 		this.y = y;
 		this.target = playerRef;
 		this.collLines = new Array(6);
+		this.target = getRandomIndex(asteroids);
 	};
     Miner.prototype = {
         x: 0,
@@ -470,11 +495,7 @@
 			var angleToTarget = 0;
 			
             // update target
-            if (crystalCount == 0 && (this.target instanceof Crystal || this.target == playerRef)) {
-                this.target = getRandomIndex(asteroids);
-            } else if (this.target instanceof Asteroid && crystalCount > 0) {
-                this.target = getRandomIndex(crystals);
-            } else if (distance(this.x, this.y, this.target.x, this.target.y) < 200) {
+            if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < 200) {
 				this.target = getRandomIndex(asteroids);
 			}
 			// movement
@@ -545,7 +566,7 @@
 		accel: .0007,
         angleDelta: 0,
         maxVel: .23,
-        throttle: true,
+        throttle: false,
         collRadius: 17,
 		collLines: [],
         target: null,
@@ -560,14 +581,6 @@
 		updateState: function (delta) {
 			var angleToTarget = 0;
 			
-            // update target
-            //if (crystalCount == 0 && (this.target instanceof Crystal || this.target == playerRef)) {
-            //    this.target = getRandomIndex(asteroids);
-            //} else if (this.target instanceof Asteroid && crystalCount > 0) {
-            //    this.target = getRandomIndex(crystals);
-            //} else if (distance(this.x, this.y, this.target.x, this.target.y) < 200) {
-			//	this.target = getRandomIndex(asteroids);
-			//}
 			// movement
 			this.angle = wrapAngle(this.angle);
 			angleToTarget = getAngleTo(this, this.target);
@@ -585,6 +598,7 @@
 					this.angle += this.turnSpeed * delta;
 				}
 			}
+			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 150);
 			moveSelf.call(this, delta);
 			// shoot
 			if (distance(this.x, this.y, this.target.x, this.target.y) < 300 &&
@@ -636,6 +650,7 @@
 		},
 		updateState: function (delta) {
 			var now = performance.now();
+			var entInd;
 			
 			if (now - this.birthTime > this.lifeSpan) {
 				this.active = false;
@@ -643,6 +658,15 @@
 			}
 			this.x += this.xVel * delta;
 			this.y += this.yVel * delta;
+			for (entInd = 0; entInd < asteroids.length; entInd++) {
+				if (circleCollidingWith(this, asteroids[entInd])) {
+					this.active = false;
+					return;
+				}
+			}
+			if (circleCollidingWith(this, playerRef)) {
+				this.active = false;
+			}
 		},
 		draw: function () {
 			CTX.beginPath();
@@ -650,6 +674,68 @@
 				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY),
 				this.collRadius, 0, 2 * Math.PI);
 			CTX.fillStyle = "#FFFF00";
+			CTX.fill();
+		}
+	};
+	function PlayerBullet() {
+	};
+	PlayerBullet.prototype = {
+        x: 0,
+        y: 0,
+        xVel: 0,
+        yVel: 0,
+        xVelDelta: 0,
+        yVelDelta: 0,
+        collRadius: 3,
+		blipColor: null,
+		collLines: [],
+		muzzleVel: .7,
+		birthTime: 0,
+		lifeSpan: 1000,
+		active: false,
+		activate: function (x, y, dir) {
+			this.birthTime = performance.now();
+			this.x = x;
+			this.y = y;
+			this.xVel = Math.cos(dir) * this.muzzleVel;
+			this.yVel = Math.sin(-dir) * this.muzzleVel;
+			this.active = true;
+		},
+		updateState: function (delta) {
+			var now = performance.now();
+			var entInd;
+			
+			if (now - this.birthTime > this.lifeSpan) {
+				this.active = false;
+				return;
+			}
+			this.x += this.xVel * delta;
+			this.y += this.yVel * delta;
+			for (entInd = 0; entInd < asteroids.length; entInd++) {
+				if (circleCollidingWith(this, asteroids[entInd])) {
+					this.active = false;
+					return;
+				}
+			}
+			for (entInd = 0; entInd < miners.length; entInd++) {
+				if (circleCollidingWith(this, miners[entInd])) {
+					this.active = false;
+					return;
+				}
+			}
+			for (entInd = 0; entInd < shooters.length; entInd++) {
+				if (circleCollidingWith(this, shooters[entInd])) {
+					this.active = false;
+					return;
+				}
+			}
+		},
+		draw: function () {
+			CTX.beginPath();
+			CTX.arc(CANVAS.width / 2 + (this.x - screenX),
+				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY),
+				this.collRadius, 0, 2 * Math.PI);
+			CTX.fillStyle = "#CCCCCC";
 			CTX.fill();
 		}
 	};
@@ -720,7 +806,7 @@
         asteroids[index] = entRef;
         asteroidCount++;
 	}
-    miners = new Array(30);
+    miners = new Array();
 	entities.push(new Miner(300, 300));
 	miners.push(entities[entities.length - 1]);
     minerCount++;
@@ -736,21 +822,27 @@
 	entities.push(new Miner(380, 380));
 	miners.push(entities[entities.length - 1]);
     minerCount++;
-	enemyBullets = new Array(20);
+	enemyBullets = new Array();
 	for (index = 0; index < 20; index++) {
 		entities.push(new EnemyBullet());
 		enemyBullets[index] = entities[entities.length - 1];
 		enemyBulletCount++;
 	}
-	shooters = new Array(1);
+	shooters = new Array();
 	entities.push(new Shooter(450, 450));
 	shooters.push(entities[entities.length - 1]);
 	shooterCount++;
-	crystals = new Array(30);
+	crystals = new Array();
 	for (index = 0; index < 30; index++) {
 		entities.push(new Crystal());
 		crystals[index] = entities[entities.length - 1];
 		crystalCount++;
+	}
+	playerBullets = new Array();
+	for (index = 0; index < 20; index++) {
+		entities.push(new PlayerBullet());
+		playerBullets[index] = entities[entities.length - 1];
+		playerBulletCount++;
 	}
     document.onkeydown = keyDownHandler;
     document.onkeyup = keyUpHandler;
