@@ -14,6 +14,7 @@
     var asteroidCount = 0;
     var crystals;
     var crystalCount = 0;
+	var crystalInd = 0;
     var miners;
     var minerCount = 0;
 	var shooters;
@@ -272,7 +273,7 @@
 		if (other) {
 			this.xVel = -this.xVel;
 			this.yVel = -this.yVel;
-			if (other instanceof Asteroid) { // asteroid bumped me
+			if (other) { // something bumped me
 				if ((this.xVel > 0 && this.xVel < other.xVel) ||
 					(this.xVel < 0 && -1 * this.xVel < other.xVel) ||
 					(this.xVel < 0 && this.xVel > other.xVel) ||
@@ -289,8 +290,6 @@
 				}				
 			}
 			// bounce away cleanly
-			// BUG: if an asteroid bumps something which also bumps into something
-			// else in the same tick, the following block will loop infinitely.
 			do {
 				angleToOther = getAngleTo(other, this);
 				this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
@@ -314,7 +313,24 @@
 		angleTo = wrapAngle(angleTo);
 		
 		return angleTo;
-	}
+	};
+	function kill(ent) {
+		displaceAngle = Math.random() * 2 * Math.PI;
+		ent.x += Math.cos(displaceAngle) * MAX_DISTANCE;
+		ent.y += Math.sin(-displaceAngle) * MAX_DISTANCE;
+	};
+	function fieldWrap(ent) {
+		if (ent.x - playerRef.x > MAX_DISTANCE) {
+			ent.x = playerRef.x - MAX_DISTANCE + 2;
+		} else if (ent.x - playerRef.x < -MAX_DISTANCE) {
+			ent.x = playerRef.x + MAX_DISTANCE - 2;
+		}
+		if (ent.y - playerRef.y > MAX_DISTANCE) {
+			ent.y = playerRef.y - MAX_DISTANCE + 2;
+		} else if (ent.y - playerRef.y < -MAX_DISTANCE) {
+			ent.y = playerRef.y + MAX_DISTANCE - 2;
+		}
+	};
     // Objects
     function Player() {};
     Player.prototype = {
@@ -424,23 +440,44 @@
 		blipColor: "#777777",
         collLines: [],
 		active: true,
+		heat: 0,
+		maxHeat: 5,
+		minCooldown: 1500,
+		lastCrystalTime: 0,
         updateState: function (delta) {
+			if (this.heat > 0) {
+				this.heat -= .002 * delta;
+				if (this.heat < 0) {
+					this.heat = 0;
+				} else if (this.heat > 0) {
+					if (performance.now() - this.lastCrystalTime > this.minCooldown * (this.maxHeat / this.heat)) {
+						crystals[crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI);
+						crystalInd = (crystalInd + 1) % crystalCount;
+						this.lastCrystalTime = performance.now();
+					}
+				}
+			}
 			this.x += this.xVel * delta;
 			this.y += this.yVel * delta;
-			// wrap around effective playing field
-			if (this.x - playerRef.x > MAX_DISTANCE) {
-				this.x = playerRef.x - MAX_DISTANCE + 2;
-			} else if (this.x - playerRef.x < -MAX_DISTANCE) {
-				this.x = playerRef.x + MAX_DISTANCE - 2;
-			}
-			if (this.y - playerRef.y > MAX_DISTANCE) {
-				this.y = playerRef.y - MAX_DISTANCE + 2;
-			} else if (this.y - playerRef.y < -MAX_DISTANCE) {
-				this.y = playerRef.y + MAX_DISTANCE - 2;
-			}
+			fieldWrap(this);
         },
+		heatUp: function (amount) {
+			var displaceAngle;
+			
+			if (this.heat == 0) {
+				this.lastCrystalTime = performance.now();
+			}
+			this.heat += amount;
+			// explode and respawn outside of radar range
+			if (this.heat > this.maxHeat) {
+				this.heat = 0;
+				kill(this);
+			}
+		},
         draw: function () {
             var index;
+			var rChannel;
+			var gbChannel;
             
             CTX.beginPath();
             CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
@@ -451,7 +488,13 @@
             }
             CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
                     CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
-            CTX.fillStyle = "#AAAAAA";
+			if (this.heat == 0) {
+				CTX.fillStyle = "#AAAAAA";
+			} else {
+				rChannel = parseInt(170 + this.heat / this.maxHeat * 85);
+				gbChannel = parseInt(170 - this.heat / this.maxHeat * 170);
+				CTX.fillStyle = "rgba(" + rChannel + "," + gbChannel + "," + gbChannel + ", 1)";
+			}
             CTX.fill();
         }
     };
@@ -534,9 +577,9 @@
 		}
 	};
 	function Shooter(x, y) {
+		this.health = this.maxHealth;
 		this.x = x;
 		this.y = y;
-		this.target = playerRef;
 		this.collLines = new Array(12);
 		// hexagonal shape
 		this.collLines[0] = Math.cos(this.angle) * this.collRadius;
@@ -565,7 +608,7 @@
         yVelDelta: 0,
 		accel: .0007,
         angleDelta: 0,
-        maxVel: .23,
+        maxVel: .2,
         throttle: false,
         collRadius: 17,
 		collLines: [],
@@ -574,6 +617,8 @@
 		turnSpeed: .002,
 		lastShotTime: 0,
 		coolDown: 1000,
+		maxHealth: 3,
+		health: 0,
 		active: true,
         updateCollLines: function () {
 			// doesn't rotate
@@ -581,31 +626,44 @@
 		updateState: function (delta) {
 			var angleToTarget = 0;
 			
+			if (this.health < 1) {
+				kill(this);
+				this.target = null;
+				this.health = this.maxHealth;
+			}
 			// movement
-			this.angle = wrapAngle(this.angle);
-			angleToTarget = getAngleTo(this, this.target);
-			// find the shortest arc and turn towards the target
-			if (Math.abs(this.angle - angleToTarget) > Math.PI) {
-				if (this.angle > angleToTarget) {
-					this.angle += this.turnSpeed * delta;
+			if (this.target != null) {
+				this.angle = wrapAngle(this.angle);
+				angleToTarget = getAngleTo(this, this.target);
+				// find the shortest arc and turn towards the target
+				if (Math.abs(this.angle - angleToTarget) > Math.PI) {
+					if (this.angle > angleToTarget) {
+						this.angle += this.turnSpeed * delta;
+					} else {
+						this.angle -= this.turnSpeed * delta;
+					}
 				} else {
-					this.angle -= this.turnSpeed * delta;
+					if (this.angle > angleToTarget) {
+						this.angle -= this.turnSpeed * delta;
+					} else {
+						this.angle += this.turnSpeed * delta;
+					}
+				}
+				this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 200);
+				moveSelf.call(this, delta);
+				fieldWrap(this);
+
+				// shoot
+				if (distance(this.x, this.y, this.target.x, this.target.y) < 250 &&
+						performance.now() - this.lastShotTime >= this.coolDown) {
+					enemyBullets[enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
+					enemyBulletInd = (enemyBulletInd + 1) % enemyBulletCount;
+					this.lastShotTime = performance.now();
 				}
 			} else {
-				if (this.angle > angleToTarget) {
-					this.angle -= this.turnSpeed * delta;
-				} else {
-					this.angle += this.turnSpeed * delta;
+				if (distance(this.x, this.y, playerRef.x, playerRef.y) < 800) {
+					this.target = playerRef;
 				}
-			}
-			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 150);
-			moveSelf.call(this, delta);
-			// shoot
-			if (distance(this.x, this.y, this.target.x, this.target.y) < 300 &&
-					performance.now() - this.lastShotTime >= this.coolDown) {
-				enemyBullets[enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
-				enemyBulletInd = (enemyBulletInd + 1) % enemyBulletCount;
-				this.lastShotTime = performance.now();
 			}
 		},
 		draw: function () {
@@ -660,6 +718,7 @@
 			this.y += this.yVel * delta;
 			for (entInd = 0; entInd < asteroids.length; entInd++) {
 				if (circleCollidingWith(this, asteroids[entInd])) {
+					asteroids[entInd].heatUp(3);
 					this.active = false;
 					return;
 				}
@@ -714,17 +773,20 @@
 			for (entInd = 0; entInd < asteroids.length; entInd++) {
 				if (circleCollidingWith(this, asteroids[entInd])) {
 					this.active = false;
+					asteroids[entInd].heatUp(1);
 					return;
 				}
 			}
 			for (entInd = 0; entInd < miners.length; entInd++) {
 				if (circleCollidingWith(this, miners[entInd])) {
+					kill(miners[entInd]);
 					this.active = false;
 					return;
 				}
 			}
 			for (entInd = 0; entInd < shooters.length; entInd++) {
 				if (circleCollidingWith(this, shooters[entInd])) {
+					shooters[entInd].health -= 1;
 					this.active = false;
 					return;
 				}
@@ -739,9 +801,7 @@
 			CTX.fill();
 		}
 	};
-    function Crystal(x, y) {
-        this.x = x;
-        this.y = y;
+    function Crystal() {
     };
     Crystal.prototype = {
         x: 0,
@@ -753,7 +813,7 @@
         collRadius: 3,
 		blipColor: null,
 		collLines: [],
-		maxVel: .2,
+		maxVel: .07,
 		birthTime: 0,
 		lifeSpan: 10000,
 		active: false,
