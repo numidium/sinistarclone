@@ -8,6 +8,7 @@
 	var mmLeft = CANVAS.width / 2 - HUD_HEIGHT / 2;
     var timeDelta = 0;
 	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolating
+	var SHOOTER_RADIUS = 17;
     var lastFrameTimestamp = 0;
     var entities = [];
     var asteroids;
@@ -331,6 +332,14 @@
 			ent.y = playerRef.y + MAX_DISTANCE - 2;
 		}
 	};
+	function updateTriangle(vectors, angle, radius) {
+		vectors[0] = Math.cos(Math.PI / 2 + angle) * radius;
+		vectors[1] = Math.sin(-Math.PI / 2 - angle) * radius;
+		vectors[2] = (Math.cos(Math.PI * (4 / 3) + angle) * radius);
+		vectors[3] = (Math.sin(-Math.PI * (4 / 3) - angle) * radius);
+		vectors[4] = (Math.cos(Math.PI * (5 / 3) + angle) * radius);
+		vectors[5] = (Math.sin(-Math.PI * (5 / 3) - angle) * radius);
+	};
     // Objects
     function Player() {};
     Player.prototype = {
@@ -355,12 +364,7 @@
 		lastShotTime: 0,
 		coolDown: 250,
         updateCollLines: function () {
-            this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
-            this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
-            this.collLines[2] = (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius);
-            this.collLines[3] = (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius);
-            this.collLines[4] = (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius);
-            this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
+			updateTriangle(this.collLines, this.angle, this.collRadius);
         },
         updateState: function(delta) {
 			moveSelf.call(this, delta);
@@ -468,7 +472,6 @@
 				this.lastCrystalTime = performance.now();
 			}
 			this.heat += amount;
-			// explode and respawn outside of radar range
 			if (this.heat > this.maxHeat) {
 				this.heat = 0;
 				kill(this);
@@ -527,12 +530,7 @@
 		turnSpeed: .005,
 		active: true,
         updateCollLines: function () {
-            this.collLines[0] = Math.cos(Math.PI / 2 + this.angle) * this.collRadius;
-            this.collLines[1] = Math.sin(-Math.PI / 2 - this.angle) * this.collRadius;
-            this.collLines[2] = (Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius);
-            this.collLines[3] = (Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius);
-            this.collLines[4] = (Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius);
-            this.collLines[5] = (Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius);
+			updateTriangle(this.collLines, this.angle, this.collRadius);
         },
 		updateState: function (delta) {
 			var angleToTarget = 0;
@@ -580,20 +578,6 @@
 		this.health = this.maxHealth;
 		this.x = x;
 		this.y = y;
-		this.collLines = new Array(12);
-		// hexagonal shape
-		this.collLines[0] = Math.cos(this.angle) * this.collRadius;
-		this.collLines[1] = Math.sin(-this.angle) * this.collRadius;
-		this.collLines[2] = Math.cos(Math.PI / 3 + this.angle) * this.collRadius;
-		this.collLines[3] = Math.sin(-Math.PI / 3 - this.angle) * this.collRadius;
-		this.collLines[4] = Math.cos(Math.PI * (2 / 3) + this.angle) * this.collRadius;
-		this.collLines[5] = Math.sin(-Math.PI * (2 / 3) - this.angle) * this.collRadius;
-		this.collLines[6] = Math.cos(Math.PI + this.angle) * this.collRadius;
-		this.collLines[7] = Math.sin(-Math.PI - this.angle) * this.collRadius;
-		this.collLines[8] = Math.cos(Math.PI * (4 / 3) + this.angle) * this.collRadius;
-		this.collLines[9] = Math.sin(-Math.PI * (4 / 3) - this.angle) * this.collRadius;
-		this.collLines[10] = Math.cos(Math.PI * (5 / 3) + this.angle) * this.collRadius;
-		this.collLines[11] = Math.sin(-Math.PI * (5 / 3) - this.angle) * this.collRadius;
 	};
     Shooter.prototype = {
         x: 0,
@@ -610,8 +594,19 @@
         angleDelta: 0,
         maxVel: .2,
         throttle: false,
-        collRadius: 17,
-		collLines: [],
+        collRadius: SHOOTER_RADIUS,
+		collLines: [SHOOTER_RADIUS,
+					0,
+					Math.cos(Math.PI / 3) * SHOOTER_RADIUS,
+					Math.sin(-Math.PI / 3) * SHOOTER_RADIUS,
+					Math.cos(Math.PI * (2 / 3)) * SHOOTER_RADIUS,
+					Math.sin(-Math.PI * (2 / 3)) * SHOOTER_RADIUS,
+					Math.cos(Math.PI) * SHOOTER_RADIUS,
+					Math.sin(-Math.PI) * SHOOTER_RADIUS,
+					Math.cos(Math.PI * (4 / 3)) * SHOOTER_RADIUS,
+					Math.sin(-Math.PI * (4 / 3)) * SHOOTER_RADIUS,
+					Math.cos(Math.PI * (5 / 3)) * SHOOTER_RADIUS,
+					Math.sin(-Math.PI * (5 / 3)) * SHOOTER_RADIUS],
         target: null,
 		angleToTarget: 0,
 		turnSpeed: .002,
@@ -651,8 +646,6 @@
 				}
 				this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 200);
 				moveSelf.call(this, delta);
-				fieldWrap(this);
-
 				// shoot
 				if (distance(this.x, this.y, this.target.x, this.target.y) < 250 &&
 						performance.now() - this.lastShotTime >= this.coolDown) {
@@ -665,6 +658,7 @@
 					this.target = playerRef;
 				}
 			}
+			fieldWrap(this);
 		},
 		draw: function () {
 			var index;
@@ -811,7 +805,7 @@
         xVelDelta: 0,
         yVelDelta: 0,
         collRadius: 3,
-		blipColor: null,
+		blipColor: "#BBBBFF",
 		collLines: [],
 		maxVel: .07,
 		birthTime: 0,
