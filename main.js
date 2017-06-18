@@ -9,6 +9,7 @@
     var timeDelta = 0;
 	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolating
 	var SHOOTER_RADIUS = 17;
+	var BOSS_RADIUS = 100;
     var lastFrameTimestamp = 0;
     var entities = [];
     var asteroids;
@@ -205,7 +206,7 @@
 		
 		for (entIndex = 0; entIndex < entities.length; entIndex++) {
 			other = entities[entIndex];
-			if (!other.active || other == subject) {
+			if (!other.active || other == subject || !other.isSolid) {
 				continue;
 			}
 			ret = collidingWith(subject, other);
@@ -363,6 +364,7 @@
 		shooting: false,
 		lastShotTime: 0,
 		coolDown: 250,
+		isSolid: true,
         updateCollLines: function () {
 			updateTriangle(this.collLines, this.angle, this.collRadius);
         },
@@ -448,6 +450,7 @@
 		maxHeat: 5,
 		minCooldown: 1500,
 		lastCrystalTime: 0,
+		isSolid: true,
         updateState: function (delta) {
 			if (this.heat > 0) {
 				this.heat -= .002 * delta;
@@ -529,6 +532,7 @@
 		angleToTarget: 0,
 		turnSpeed: .005,
 		active: true,
+		isSolid: true,
         updateCollLines: function () {
 			updateTriangle(this.collLines, this.angle, this.collRadius);
         },
@@ -615,6 +619,7 @@
 		maxHealth: 3,
 		health: 0,
 		active: true,
+		isSolid: true,
         updateCollLines: function () {
 			// doesn't rotate
         },
@@ -692,6 +697,7 @@
 		birthTime: 0,
 		lifeSpan: 1000,
 		active: false,
+		isSolid: false,
 		activate: function (x, y, dir) {
 			this.birthTime = performance.now();
 			this.x = x;
@@ -746,6 +752,7 @@
 		birthTime: 0,
 		lifeSpan: 1000,
 		active: false,
+		isSolid: false,
 		activate: function (x, y, dir) {
 			this.birthTime = performance.now();
 			this.x = x;
@@ -811,6 +818,7 @@
 		birthTime: 0,
 		lifeSpan: 10000,
 		active: false,
+		isSolid: false,
 		activate: function (x, y, dir) {
 			this.birthTime = performance.now();
 			this.x = x;
@@ -838,8 +846,67 @@
 			CTX.fill();
 		}
     };
+	function Boss() {
+	};
+	Boss.prototype = {
+        x: 100,
+        y: 100,
+		imgWidth: 0,
+		imgHeight: 0,
+		blipColor: "#FFFF00",
+        angle: 0,
+        xVel: 0,
+        yVel: 0,
+        xVelDelta: 0,
+        yVelDelta: 0,
+		accel: .0007,
+        angleDelta: 0,
+        maxVel: .3,
+        throttle: false,
+		isSolid: false,
+        collRadius: BOSS_RADIUS,
+		collLines: [BOSS_RADIUS,
+					0,
+					Math.cos(Math.PI / 4) * BOSS_RADIUS,
+					Math.sin(-Math.PI / 4) * BOSS_RADIUS,
+					Math.cos(Math.PI / 2) * BOSS_RADIUS,
+					Math.sin(-Math.PI / 2) * BOSS_RADIUS,
+					Math.cos(Math.PI * (3 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (3 / 4)) * BOSS_RADIUS,
+					Math.cos(Math.PI) * BOSS_RADIUS,
+					Math.sin(-Math.PI) * BOSS_RADIUS,
+					Math.cos(Math.PI * (5 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (5 / 4)) * BOSS_RADIUS,
+					Math.cos(Math.PI * (3 / 2)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (3 / 2)) * BOSS_RADIUS,
+					Math.cos(Math.PI * (7 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (7 / 4)) * BOSS_RADIUS],
+        target: null,
+		angleToTarget: 0,
+		turnSpeed: .002,
+		active: true,
+		updateState: function (delta) {
+			
+		},
+		draw: function () {
+			var index;
+			
+			CTX.beginPath();
+			CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+				CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
+			for (index = 0; index < this.collLines.length; index += 2) {
+				CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
+					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
+			}
+			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
+			CTX.fillStyle = "#660000";
+			CTX.fill();			
+		}
+	};
     
     // Setup
+	entities.push(new Boss());
     playerRef = new Player();
     entities.push(playerRef);
 	screenX = playerRef.x;
@@ -851,7 +918,7 @@
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
-		entRef = entities[index + 1];
+		entRef = entities[index + 2];
 		// move out of the way if on top of the player
 		if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
 			entRef.x += entRef.collRadius;
