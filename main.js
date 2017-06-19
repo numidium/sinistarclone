@@ -204,9 +204,10 @@
 		var other;
 		var ret;
 		
-		for (entIndex = 0; entIndex < entities.length; entIndex++) {
+		// start at 1 because the boss (who no one can run into) is at 0
+		for (entIndex = 2; entIndex < entities.length; entIndex++) {
 			other = entities[entIndex];
-			if (!other.active || other == subject || !other.isSolid) {
+			if (!other.active || other == subject) {
 				continue;
 			}
 			ret = collidingWith(subject, other);
@@ -364,7 +365,6 @@
 		shooting: false,
 		lastShotTime: 0,
 		coolDown: 250,
-		isSolid: true,
         updateCollLines: function () {
 			updateTriangle(this.collLines, this.angle, this.collRadius);
         },
@@ -450,7 +450,6 @@
 		maxHeat: 5,
 		minCooldown: 1500,
 		lastCrystalTime: 0,
-		isSolid: true,
         updateState: function (delta) {
 			if (this.heat > 0) {
 				this.heat -= .002 * delta;
@@ -532,7 +531,6 @@
 		angleToTarget: 0,
 		turnSpeed: .005,
 		active: true,
-		isSolid: true,
         updateCollLines: function () {
 			updateTriangle(this.collLines, this.angle, this.collRadius);
         },
@@ -619,7 +617,6 @@
 		maxHealth: 3,
 		health: 0,
 		active: true,
-		isSolid: true,
         updateCollLines: function () {
 			// doesn't rotate
         },
@@ -697,7 +694,6 @@
 		birthTime: 0,
 		lifeSpan: 1000,
 		active: false,
-		isSolid: false,
 		activate: function (x, y, dir) {
 			this.birthTime = performance.now();
 			this.x = x;
@@ -752,7 +748,6 @@
 		birthTime: 0,
 		lifeSpan: 1000,
 		active: false,
-		isSolid: false,
 		activate: function (x, y, dir) {
 			this.birthTime = performance.now();
 			this.x = x;
@@ -818,7 +813,6 @@
 		birthTime: 0,
 		lifeSpan: 10000,
 		active: false,
-		isSolid: false,
 		activate: function (x, y, dir) {
 			this.birthTime = performance.now();
 			this.x = x;
@@ -863,24 +857,8 @@
         angleDelta: 0,
         maxVel: .3,
         throttle: false,
-		isSolid: false,
         collRadius: BOSS_RADIUS,
-		collLines: [BOSS_RADIUS,
-					0,
-					Math.cos(Math.PI / 4) * BOSS_RADIUS,
-					Math.sin(-Math.PI / 4) * BOSS_RADIUS,
-					Math.cos(Math.PI / 2) * BOSS_RADIUS,
-					Math.sin(-Math.PI / 2) * BOSS_RADIUS,
-					Math.cos(Math.PI * (3 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (3 / 4)) * BOSS_RADIUS,
-					Math.cos(Math.PI) * BOSS_RADIUS,
-					Math.sin(-Math.PI) * BOSS_RADIUS,
-					Math.cos(Math.PI * (5 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (5 / 4)) * BOSS_RADIUS,
-					Math.cos(Math.PI * (3 / 2)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (3 / 2)) * BOSS_RADIUS,
-					Math.cos(Math.PI * (7 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (7 / 4)) * BOSS_RADIUS],
+		collLines: [],
         target: null,
 		angleToTarget: 0,
 		turnSpeed: .002,
@@ -904,9 +882,119 @@
 			CTX.fill();			
 		}
 	};
+	function bossPiece(x, y, pieceNumber) {
+		this.x = x;
+		this.y = y;
+		switch (pieceNumber) {
+			case 0:
+				this.collLines = [0,
+					0,
+					BOSS_RADIUS,
+					0,
+					Math.cos(Math.PI / 4) * BOSS_RADIUS,
+					Math.sin(-Math.PI / 4) * BOSS_RADIUS];
+				break;
+			case 1:
+				this.collLines = [0,
+					0,
+					Math.cos(Math.PI / 4) * BOSS_RADIUS,
+					Math.sin(-Math.PI / 4) * BOSS_RADIUS,
+					Math.cos(Math.PI / 2) * BOSS_RADIUS,
+					Math.sin(-Math.PI / 2) * BOSS_RADIUS];
+					break;
+			case 2:
+				this.collLines = [0,
+					0,
+					Math.cos(Math.PI / 2) * BOSS_RADIUS,
+					Math.sin(-Math.PI / 2) * BOSS_RADIUS,
+					Math.cos(Math.PI * (3 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (3 / 4)) * BOSS_RADIUS];
+				break;
+			case 3:
+				this.collLines = [0,
+					0,
+					Math.cos(Math.PI * (3 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (3 / 4)) * BOSS_RADIUS,
+					Math.cos(Math.PI) * BOSS_RADIUS,
+					Math.sin(-Math.PI) * BOSS_RADIUS];
+				break;
+			case 4:
+				this.collLines = [0,
+					0,
+					Math.cos(Math.PI) * BOSS_RADIUS,
+					Math.sin(-Math.PI) * BOSS_RADIUS,
+					Math.cos(Math.PI * (5 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (5 / 4)) * BOSS_RADIUS];
+				break;
+			case 5:
+				this.collLines = [0,
+					0,
+					Math.cos(Math.PI * (5 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (5 / 4)) * BOSS_RADIUS,
+					Math.cos(Math.PI * (3 / 2)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (3 / 2)) * BOSS_RADIUS];
+				break;
+			case 6:
+				this.collLines = [0,
+					0,
+					Math.cos(Math.PI * (3 / 2)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (3 / 2)) * BOSS_RADIUS,
+					Math.cos(Math.PI * (7 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (7 / 4)) * BOSS_RADIUS];
+				break;
+			case 7:
+				this.collLines = [0,
+					0,
+					Math.cos(Math.PI * (7 / 4)) * BOSS_RADIUS,
+					Math.sin(-Math.PI * (7 / 4)) * BOSS_RADIUS,
+					BOSS_RADIUS,
+					0];
+				break;
+			default:
+				break;
+		}
+	};
+	bossPiece.prototype = {
+        x: 0,
+        y: 0,
+		imgWidth: 0,
+		imgHeight: 0,
+		blipColor: null,
+        angle: 0,
+        xVel: 0,
+        yVel: 0,
+        xVelDelta: 0,
+        yVelDelta: 0,
+		accel: .0007,
+        angleDelta: 0,
+        maxVel: .3,
+        throttle: false,
+		active: true,
+        collRadius: BOSS_RADIUS,
+		collLines: [],
+		updateState: function () {
+			
+		},
+		draw: function () {
+			var index;
+			
+			CTX.beginPath();
+			CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+				CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
+			for (index = 0; index < this.collLines.length; index += 2) {
+				CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
+					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
+			}
+			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
+					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
+			CTX.fillStyle = "#FF0000";
+			CTX.fill();
+		}
+	};
     
     // Setup
 	entities.push(new Boss());
+	entities.push(new bossPiece(100, 100, 7));
     playerRef = new Player();
     entities.push(playerRef);
 	screenX = playerRef.x;
@@ -918,7 +1006,7 @@
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
-		entRef = entities[index + 2];
+		entRef = entities[index + 3];
 		// move out of the way if on top of the player
 		if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
 			entRef.x += entRef.collRadius;
