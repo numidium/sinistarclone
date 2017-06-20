@@ -28,6 +28,7 @@
 	var playerBulletCount = 0;
 	var playerBulletInd = 0;
     var playerRef;
+	var bossRef;
 	var index;
 	var entRef;
 	var screenX;
@@ -298,7 +299,11 @@
 				this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
 				this.y -= Math.abs(this.yVel) * Math.sin(angleToOther + Math.PI / 2) * delta;
 			} while (collidingWith(this, other));
+			
+			return other;
 		}
+		
+		return null;
 	};
 	function wrapAngle(angle) {
 		if (angle > 2 * Math.PI) {
@@ -521,24 +526,28 @@
         yVel: 0,
         xVelDelta: 0,
         yVelDelta: 0,
-		accel: .0005,
+		accel: .0015,
         angleDelta: 0,
-        maxVel: .25,
+        maxVel: .21,
         throttle: true,
         collRadius: 13,
 		collLines: [],
         target: null,
 		angleToTarget: 0,
-		turnSpeed: .005,
+		turnSpeed: .007,
 		active: true,
+		bumpCooldown: 500,
+		lastBump: 0,
+		hasCrystal: false,
         updateCollLines: function () {
 			updateTriangle(this.collLines, this.angle, this.collRadius);
         },
 		updateState: function (delta) {
 			var angleToTarget = 0;
+			var minTargetDist = this.target instanceof Asteroid ? 200 : 5;
 			
             // update target
-            if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < 200) {
+            if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < minTargetDist) {
 				this.target = getRandomIndex(asteroids);
 			}
 			// movement
@@ -558,7 +567,14 @@
 					this.angle += this.turnSpeed * delta;
 				}
 			}
-			moveSelf.call(this, delta);
+			// wait for a clear path after hitting asteroid
+			if (!this.throttle && performance.now() - this.lastBump >= this.bumpCooldown) {
+				this.throttle = true;
+			}
+			if (moveSelf.call(this, delta) instanceof Asteroid) {
+				this.lastBump = performance.now();
+				this.throttle = false;
+			}
 		},
 		draw: function () {
 			var index;
@@ -814,15 +830,25 @@
 		lifeSpan: 10000,
 		active: false,
 		activate: function (x, y, dir) {
+			var minerInd;
+			
 			this.birthTime = performance.now();
 			this.x = x;
 			this.y = y;
 			this.xVel = Math.cos(dir) * this.maxVel;
 			this.yVel = Math.sin(-dir) * this.maxVel;
+			for (minerInd = 0; minerInd < minerCount; minerInd++) {
+				if (miners[minerInd].active && !(miners[minerInd].target instanceof Crystal)) {
+					miners[minerInd].target = this;
+					break;
+				}
+			}
 			this.active = true;
 		},
 		updateState: function (delta) {
 			var now = performance.now();
+			var minerInd;
+			var other;
 			
 			if (now - this.birthTime > this.lifeSpan) {
 				this.active = false;
@@ -830,6 +856,14 @@
 			}
 			this.x += this.xVel * delta;
 			this.y += this.yVel * delta;
+			for (minerInd = 0; minerInd < minerCount; minerInd++) {
+				other = circleCollidingWith(this, miners[minerInd]);
+				if (other && other.active) {
+					other.hasCrystal = true;
+					this.active = false;
+					break;
+				}
+			}
 		},
 		draw: function () {
 			CTX.beginPath();
@@ -864,7 +898,6 @@
 		turnSpeed: .002,
 		active: true,
 		updateState: function (delta) {
-			
 		},
 		draw: function () {
 			var index;
@@ -973,7 +1006,8 @@
         collRadius: BOSS_RADIUS,
 		collLines: [],
 		updateState: function () {
-			
+			this.x = bossRef.x;
+			this.y = bossRef.y;
 		},
 		draw: function () {
 			var index;
@@ -987,13 +1021,14 @@
 			}
 			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
 					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
-			CTX.fillStyle = "#FF0000";
+			CTX.fillStyle = "#444444";
 			CTX.fill();
 		}
 	};
     
     // Setup
 	entities.push(new Boss());
+	bossRef = entities[0];
 	entities.push(new bossPiece(100, 100, 7));
     playerRef = new Player();
     entities.push(playerRef);
