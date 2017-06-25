@@ -29,6 +29,7 @@
 	var playerBulletInd = 0;
     var playerRef;
 	var bossRef;
+	var bossPieces = [];
 	var index;
 	var entRef;
 	var screenX;
@@ -205,8 +206,8 @@
 		var other;
 		var ret;
 		
-		// start at 1 because the boss (who no one can run into) is at 0
-		for (entIndex = 2; entIndex < entities.length; entIndex++) {
+		// start at 9 because the boss occupies 0-7 and player occupies 8
+		for (entIndex = 9; entIndex < entities.length; entIndex++) {
 			other = entities[entIndex];
 			if (!other.active || other == subject) {
 				continue;
@@ -547,7 +548,12 @@
 			var minTargetDist = this.target instanceof Asteroid ? 200 : 5;
 			
             // update target
-            if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < minTargetDist) {
+			if (this.hasCrystal && this.target != bossRef && !bossRef.isComplete()) {
+				this.target = bossRef;
+			} else if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < minTargetDist) {
+				this.target = getRandomIndex(asteroids);
+			}
+			if (this.target == bossRef && bossRef.isComplete()) {
 				this.target = getRandomIndex(asteroids);
 			}
 			// movement
@@ -831,6 +837,7 @@
 		active: false,
 		activate: function (x, y, dir) {
 			var minerInd;
+			var miner;
 			
 			this.birthTime = performance.now();
 			this.x = x;
@@ -838,7 +845,8 @@
 			this.xVel = Math.cos(dir) * this.maxVel;
 			this.yVel = Math.sin(-dir) * this.maxVel;
 			for (minerInd = 0; minerInd < minerCount; minerInd++) {
-				if (miners[minerInd].active && !(miners[minerInd].target instanceof Crystal)) {
+				miner = miners[minerInd];
+				if (miners[minerInd].active && !(miners[minerInd].target instanceof Crystal) && !miners[minerInd].hasCrystal) {
 					miners[minerInd].target = this;
 					break;
 				}
@@ -896,8 +904,29 @@
         target: null,
 		angleToTarget: 0,
 		turnSpeed: .002,
+		activePieces: 0,
 		active: true,
 		updateState: function (delta) {
+			var minerInd;
+			var miner;
+			
+			this.x = bossRef.x;
+			this.y = bossRef.y;
+			if (!this.isComplete()) {
+				for (minerInd = 0; minerInd < minerCount; minerInd++) {
+					miner = miners[minerInd];
+					if (distance(this.x, this.y, miner.x, miner.y) < 30 && miner.hasCrystal) {
+						this.activePieces++;
+						bossPieces[this.activePieces - 1].active = true;
+						miner.hasCrystal = false;
+						miner.target = getRandomIndex(asteroids);
+						kill(miner);
+					}
+				}
+			}
+		},
+		isComplete: function () {
+			return (this.activePieces == 8);
 		},
 		draw: function () {
 			var index;
@@ -1002,12 +1031,10 @@
         angleDelta: 0,
         maxVel: .3,
         throttle: false,
-		active: true,
+		active: false,
         collRadius: BOSS_RADIUS,
 		collLines: [],
 		updateState: function () {
-			this.x = bossRef.x;
-			this.y = bossRef.y;
 		},
 		draw: function () {
 			var index;
@@ -1029,7 +1056,10 @@
     // Setup
 	entities.push(new Boss());
 	bossRef = entities[0];
-	entities.push(new bossPiece(100, 100, 7));
+	for (index = 0; index < 8; index++) {
+		entities.push(new bossPiece(100, 100, index));
+		bossPieces[bossPieces.length] = entities[entities.length - 1];
+	}
     playerRef = new Player();
     entities.push(playerRef);
 	screenX = playerRef.x;
@@ -1041,7 +1071,7 @@
 		entities.push(new Asteroid(
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
-		entRef = entities[index + 3];
+		entRef = entities[index + 10];
 		// move out of the way if on top of the player
 		if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
 			entRef.x += entRef.collRadius;
