@@ -348,6 +348,14 @@
 		vectors[4] = (Math.cos(Math.PI * (5 / 3) + angle) * radius);
 		vectors[5] = (Math.sin(-Math.PI * (5 / 3) - angle) * radius);
 	};
+	function drawCircle(x, y, r, fill) {
+		CTX.beginPath();
+		CTX.arc(CANVAS.width / 2 + x,
+			CANVAS.height / 2 + HUD_HEIGHT / 2 + y,
+			r, 0, 2 * Math.PI);
+		CTX.fillStyle = fill;
+		CTX.fill();
+	};
     // Objects
     function Player() {};
     Player.prototype = {
@@ -582,6 +590,15 @@
 				this.throttle = false;
 			}
 		},
+		kill: function () {
+			if (this.hasCrystal) {
+				crystals[crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI);
+				crystalInd = (crystalInd + 1) % crystalCount;
+			}
+			this.hasCrystal = false;
+			this.target = getRandomIndex(asteroids);
+			kill(this);
+		},
 		draw: function () {
 			var index;
 			
@@ -596,6 +613,9 @@
 					CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
 			CTX.fillStyle = "#FF0000";
 			CTX.fill();
+			if (this.hasCrystal) {
+				drawCircle(this.x - screenX, this.y - screenY, Crystal.prototype.collRadius, "#5555FF");
+			}
 		}
 	};
 	function Shooter(x, y) {
@@ -746,12 +766,7 @@
 			}
 		},
 		draw: function () {
-			CTX.beginPath();
-			CTX.arc(CANVAS.width / 2 + (this.x - screenX),
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY),
-				this.collRadius, 0, 2 * Math.PI);
-			CTX.fillStyle = "#FFFF00";
-			CTX.fill();
+			drawCircle(this.x - screenX, this.y - screenY, this.collRadius, "#FFFF00");
 		}
 	};
 	function PlayerBullet() {
@@ -790,14 +805,14 @@
 			this.y += this.yVel * delta;
 			for (entInd = 0; entInd < asteroids.length; entInd++) {
 				if (circleCollidingWith(this, asteroids[entInd])) {
-					this.active = false;
 					asteroids[entInd].heatUp(1);
+					this.active = false;
 					return;
 				}
 			}
 			for (entInd = 0; entInd < miners.length; entInd++) {
 				if (circleCollidingWith(this, miners[entInd])) {
-					kill(miners[entInd]);
+					miners[entInd].kill();
 					this.active = false;
 					return;
 				}
@@ -811,12 +826,7 @@
 			}
 		},
 		draw: function () {
-			CTX.beginPath();
-			CTX.arc(CANVAS.width / 2 + (this.x - screenX),
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY),
-				this.collRadius, 0, 2 * Math.PI);
-			CTX.fillStyle = "#CCCCCC";
-			CTX.fill();
+			drawCircle(this.x - screenX, this.y - screenY, this.collRadius, "#CCCCCC");
 		}
 	};
     function Crystal() {
@@ -866,7 +876,7 @@
 			this.y += this.yVel * delta;
 			for (minerInd = 0; minerInd < minerCount; minerInd++) {
 				other = circleCollidingWith(this, miners[minerInd]);
-				if (other && other.active) {
+				if (other && other.active && !other.hasCrystal) {
 					other.hasCrystal = true;
 					this.active = false;
 					break;
@@ -874,12 +884,7 @@
 			}
 		},
 		draw: function () {
-			CTX.beginPath();
-			CTX.arc(CANVAS.width / 2 + (this.x - screenX),
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY),
-				this.collRadius, 0, 2 * Math.PI);
-			CTX.fillStyle = "#5555FF";
-			CTX.fill();
+			drawCircle(this.x - screenX, this.y - screenY, this.collRadius, "#5555FF");
 		}
     };
 	function Boss() {
@@ -919,8 +924,7 @@
 						this.activePieces++;
 						bossPieces[this.activePieces - 1].active = true;
 						miner.hasCrystal = false;
-						miner.target = getRandomIndex(asteroids);
-						kill(miner);
+						miner.kill();
 					}
 				}
 			}
@@ -1027,9 +1031,9 @@
         yVel: 0,
         xVelDelta: 0,
         yVelDelta: 0,
-		accel: .0007,
+		accel: 0,
         angleDelta: 0,
-        maxVel: .3,
+        maxVel: 0,
         throttle: false,
 		active: false,
         collRadius: BOSS_RADIUS,
