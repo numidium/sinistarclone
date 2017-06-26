@@ -38,66 +38,142 @@
 	var MAX_SCREEN_BOUND_Y = 50;
 	var screenBoundX;
 	var screenBoundY;
-    function mainLoop(timeStamp) {
-        var entIndex;
-		var curEnt;
-		var mmX; // minimap x, y
-		var mmY;
-        
-        timeDelta += timeStamp - lastFrameTimestamp;
-		timeDelta = timeDelta > MAX_TIME_DELTA ? MAX_TIME_DELTA : timeDelta;
-        lastFrameTimestamp = timeStamp;
-        // Interpolate state updates
-        while (timeDelta >= TIMESTEP) {
-            for (entIndex = 0; entIndex < entities.length; entIndex++) {
-				if (entities[entIndex].active) {
-					entities[entIndex].updateState(TIMESTEP);
-				}
-            }
-            timeDelta -= TIMESTEP;
-        }
-        // Drawing
-        CTX.clearRect(0, 0, CANVAS.width, CANVAS.height); // clear the canvas
-		// Draw entities
-        for (entIndex = 0; entIndex < entities.length; entIndex++) {
-			curEnt = entities[entIndex];
-			if (curEnt.active) {
-				entities[entIndex].draw();
-			}
-        }
-		// Draw HUD
-		CTX.fillStyle = "#000090";
-		CTX.fillRect(0, 0, CANVAS.width, HUD_HEIGHT);
-		CTX.fillStyle = "#000040";
-		CTX.fillRect(mmLeft, 0, 80, 80);
-		CTX.beginPath();
-		CTX.strokeStyle = "#FFFF00";
-		// visible distance rectangle
-		CTX.rect(mmLeft + HUD_HEIGHT / 2 - (playerRef.x - screenX + CANVAS.width / 2) / MINIMAP_SCALE,
-			HUD_HEIGHT / 2 - (playerRef.y - screenY + (CANVAS.height - HUD_HEIGHT) / 2) / MINIMAP_SCALE,
-			CANVAS.width / MINIMAP_SCALE,
-			(CANVAS.height - HUD_HEIGHT) / MINIMAP_SCALE);
-		CTX.stroke();
-		// Draw minimap blips
-		for (entIndex = 0; entIndex < entities.length; entIndex++) {
-			curEnt = entities[entIndex];
-			if (!curEnt.active || !curEnt.blipColor) {
-				continue;
-			}
-			mmX = mmLeft + HUD_HEIGHT / 2 - 1 + (curEnt.x - playerRef.x) / MINIMAP_SCALE;
-			if (mmX - 1 < mmLeft || mmX + 1 >= mmLeft + HUD_HEIGHT) {
-				continue;
-			}
-			mmY = HUD_HEIGHT / 2 - 1 + (curEnt.y - playerRef.y) / MINIMAP_SCALE;
-			if (mmY < 0 || mmY + 1 >= HUD_HEIGHT) {
-				continue;
-			}
-			CTX.fillStyle = curEnt.blipColor;
-			CTX.fillRect(mmX, mmY, 2, 2);
+	function startGame() {
+		// Setup
+		entities.push(new Boss());
+		bossRef = entities[0];
+		for (index = 0; index < 8; index++) {
+			entities.push(new bossPiece(100, 100, index));
+			bossPieces[bossPieces.length] = entities[entities.length - 1];
 		}
-        requestAnimationFrame(mainLoop);
+		playerRef = new Player();
+		entities.push(playerRef);
+		screenX = playerRef.x;
+		screenY = playerRef.y;
+		CTX.lineWidth = 1;
+		// Scatter some asteroids around the player
+		asteroids = new Array(50);
+		for (index = 0; index < 50; index++) {
+			entities.push(new Asteroid(
+				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
+				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
+			entRef = entities[index + 10];
+			// move out of the way if on top of the player
+			if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
+				entRef.x += entRef.collRadius;
+			}
+			// register each asteroid
+			asteroids[index] = entRef;
+			asteroidCount++;
+		}
+		miners = new Array();
+		entities.push(new Miner());
+		entities[entities.length - 1].activate(300, 300);
+		miners.push(entities[entities.length - 1]);
+		minerCount++;
+		entities.push(new Miner());
+		entities[entities.length - 1].activate(320, 320);
+		miners.push(entities[entities.length - 1]);
+		minerCount++;
+		entities.push(new Miner());
+		entities[entities.length - 1].activate(340, 340);
+		miners.push(entities[entities.length - 1]);
+		minerCount++;
+		entities.push(new Miner());
+		entities[entities.length - 1].activate(360, 360);
+		miners.push(entities[entities.length - 1]);
+		minerCount++;
+		entities.push(new Miner());
+		entities[entities.length - 1].activate(380, 380);
+		miners.push(entities[entities.length - 1]);
+		minerCount++;
+		enemyBullets = new Array();
+		for (index = 0; index < 20; index++) {
+			entities.push(new EnemyBullet());
+			enemyBullets[index] = entities[entities.length - 1];
+			enemyBulletCount++;
+		}
+		shooters = new Array();
+		entities.push(new Shooter());
+		entities[entities.length - 1].activate(450, 450);
+		shooters.push(entities[entities.length - 1]);
+		shooterCount++;
+		crystals = new Array();
+		for (index = 0; index < 30; index++) {
+			entities.push(new Crystal());
+			crystals[index] = entities[entities.length - 1];
+			crystalCount++;
+		}
+		playerBullets = new Array();
+		for (index = 0; index < 20; index++) {
+			entities.push(new PlayerBullet());
+			playerBullets[index] = entities[entities.length - 1];
+			playerBulletCount++;
+		}
+		document.onkeydown = keyDownHandler;
+		document.onkeyup = keyUpHandler;
+		requestAnimationFrame(mainLoop); // Begin loop
+		function mainLoop(timeStamp) {
+			var entIndex;
+			var curEnt;
+			var mmX; // minimap x, y
+			var mmY;
+			
+			timeDelta += timeStamp - lastFrameTimestamp;
+			timeDelta = timeDelta > MAX_TIME_DELTA ? MAX_TIME_DELTA : timeDelta;
+			lastFrameTimestamp = timeStamp;
+			// Interpolate state updates
+			while (timeDelta >= TIMESTEP) {
+				for (entIndex = 0; entIndex < entities.length; entIndex++) {
+					if (entities[entIndex].active) {
+						entities[entIndex].updateState(TIMESTEP);
+					}
+				}
+				timeDelta -= TIMESTEP;
+			}
+			// Drawing
+			CTX.clearRect(0, 0, CANVAS.width, CANVAS.height); // clear the canvas
+			// Draw entities
+			for (entIndex = 0; entIndex < entities.length; entIndex++) {
+				curEnt = entities[entIndex];
+				if (curEnt.active) {
+					entities[entIndex].draw();
+				}
+			}
+			// Draw HUD
+			CTX.fillStyle = "#000090";
+			CTX.fillRect(0, 0, CANVAS.width, HUD_HEIGHT);
+			CTX.fillStyle = "#000040";
+			CTX.fillRect(mmLeft, 0, 80, 80);
+			CTX.beginPath();
+			CTX.strokeStyle = "#FFFF00";
+			// visible distance rectangle
+			CTX.rect(mmLeft + HUD_HEIGHT / 2 - (playerRef.x - screenX + CANVAS.width / 2) / MINIMAP_SCALE,
+				HUD_HEIGHT / 2 - (playerRef.y - screenY + (CANVAS.height - HUD_HEIGHT) / 2) / MINIMAP_SCALE,
+				CANVAS.width / MINIMAP_SCALE,
+				(CANVAS.height - HUD_HEIGHT) / MINIMAP_SCALE);
+			CTX.stroke();
+			// Draw minimap blips
+			for (entIndex = 0; entIndex < entities.length; entIndex++) {
+				curEnt = entities[entIndex];
+				if (!curEnt.active || !curEnt.blipColor) {
+					continue;
+				}
+				mmX = mmLeft + HUD_HEIGHT / 2 - 1 + (curEnt.x - playerRef.x) / MINIMAP_SCALE;
+				if (mmX - 1 < mmLeft || mmX + 1 >= mmLeft + HUD_HEIGHT) {
+					continue;
+				}
+				mmY = HUD_HEIGHT / 2 - 1 + (curEnt.y - playerRef.y) / MINIMAP_SCALE;
+				if (mmY < 0 || mmY + 1 >= HUD_HEIGHT) {
+					continue;
+				}
+				CTX.fillStyle = curEnt.blipColor;
+				CTX.fillRect(mmX, mmY, 2, 2);
+			}
+			requestAnimationFrame(mainLoop);
+		};
     };
-    function keyDownHandler(e) {
+	function keyDownHandler(e) {
         switch(e.keyCode) {
             case 38: // up
                 playerRef.throttle = true;
@@ -981,78 +1057,5 @@
 		CTX.fillStyle = "#444444";
 		CTX.fill();
 	};
-    // Setup
-	entities.push(new Boss());
-	bossRef = entities[0];
-	for (index = 0; index < 8; index++) {
-		entities.push(new bossPiece(100, 100, index));
-		bossPieces[bossPieces.length] = entities[entities.length - 1];
-	}
-    playerRef = new Player();
-    entities.push(playerRef);
-	screenX = playerRef.x;
-	screenY = playerRef.y;
-	CTX.lineWidth = 1;
-	// Scatter some asteroids around the player
-    asteroids = new Array(50);
-	for (index = 0; index < 50; index++) {
-		entities.push(new Asteroid(
-			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
-			(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
-		entRef = entities[index + 10];
-		// move out of the way if on top of the player
-		if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
-			entRef.x += entRef.collRadius;
-		}
-        // register each asteroid
-        asteroids[index] = entRef;
-        asteroidCount++;
-	}
-    miners = new Array();
-	entities.push(new Miner());
-	entities[entities.length - 1].activate(300, 300);
-	miners.push(entities[entities.length - 1]);
-    minerCount++;
-	entities.push(new Miner());
-	entities[entities.length - 1].activate(320, 320);
-	miners.push(entities[entities.length - 1]);
-    minerCount++;
-	entities.push(new Miner());
-	entities[entities.length - 1].activate(340, 340);
-	miners.push(entities[entities.length - 1]);
-    minerCount++;
-	entities.push(new Miner());
-	entities[entities.length - 1].activate(360, 360);
-	miners.push(entities[entities.length - 1]);
-    minerCount++;
-	entities.push(new Miner());
-	entities[entities.length - 1].activate(380, 380);
-	miners.push(entities[entities.length - 1]);
-    minerCount++;
-	enemyBullets = new Array();
-	for (index = 0; index < 20; index++) {
-		entities.push(new EnemyBullet());
-		enemyBullets[index] = entities[entities.length - 1];
-		enemyBulletCount++;
-	}
-	shooters = new Array();
-	entities.push(new Shooter());
-	entities[entities.length - 1].activate(450, 450);
-	shooters.push(entities[entities.length - 1]);
-	shooterCount++;
-	crystals = new Array();
-	for (index = 0; index < 30; index++) {
-		entities.push(new Crystal());
-		crystals[index] = entities[entities.length - 1];
-		crystalCount++;
-	}
-	playerBullets = new Array();
-	for (index = 0; index < 20; index++) {
-		entities.push(new PlayerBullet());
-		playerBullets[index] = entities[entities.length - 1];
-		playerBulletCount++;
-	}
-    document.onkeydown = keyDownHandler;
-    document.onkeyup = keyUpHandler;
-    requestAnimationFrame(mainLoop); // Begin loop
+	startGame();
 }());
