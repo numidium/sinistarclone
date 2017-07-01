@@ -7,108 +7,91 @@
 	var MAX_DISTANCE = 1500;
 	var mmLeft = CANVAS.width / 2 - HUD_HEIGHT / 2;
     var timeDelta = 0;
-	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolating
+	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolatinginterpolating
 	var SHOOTER_RADIUS = 17;
 	var BOSS_RADIUS = 100;
     var lastFrameTimestamp = 0;
-    var entities = [];
-    var asteroids;
-    var asteroidCount = 0;
-    var crystals;
-    var crystalCount = 0;
-	var crystalInd = 0;
-    var miners;
-    var minerCount = 0;
-	var shooters;
-	var shooterCount = 0;
-	var enemyBullets;
-	var enemyBulletCount = 0;
-	var enemyBulletInd = 0;
-	var playerBullets;
-	var playerBulletCount = 0;
-	var playerBulletInd = 0;
-    var playerRef;
-	var bossRef;
-	var bossPieces = [];
-	var index;
-	var entRef;
 	var screenX;
 	var screenY;
 	var MAX_SCREEN_BOUND_X = 100;
 	var MAX_SCREEN_BOUND_Y = 50;
 	var screenBoundX;
 	var screenBoundY;
+    var leftPressed = false;
+    var rightPressed = false;
+    var throttlePressed = false;
+    var shootPressed = false;
 	function startGame() {
 		// Setup
-		entities.push(new Boss());
-		bossRef = entities[0];
-		for (index = 0; index < 8; index++) {
-			entities.push(new bossPiece(100, 100, index));
-			bossPieces[bossPieces.length] = entities[entities.length - 1];
-		}
-		playerRef = new Player();
-		entities.push(playerRef);
-		screenX = playerRef.x;
-		screenY = playerRef.y;
-		CTX.lineWidth = 1;
-		// Scatter some asteroids around the player
-		asteroids = new Array(50);
-		for (index = 0; index < 50; index++) {
-			entities.push(new Asteroid(
+        var index;
+        var entRef;
+        var entLookup = {
+            entities: [],
+            playerRef: null,
+            bossRef: null,
+            miners: [],
+            asteroids: [],
+            crystals: [],
+            crystalInd: 0,
+            shooters: [],
+            bossPieces: [],
+            playerBullets: [],
+            playerBulletInd: 0,
+            enemyBullets: [],
+            enemyBulletInd: 0
+        };
+        
+        entLookup.bossRef = new Boss();
+        entLookup.entities.push(entLookup.bossRef);
+        for (index = 0; index < 8; index++) {
+            entLookup.entities.push(new bossPiece(0, 0, index));
+            entLookup.bossPieces[entLookup.bossPieces.length] = entLookup.entities[entLookup.entities.length - 1];
+        }
+        entLookup.playerRef = new Player();
+        entLookup.entities.push(entLookup.playerRef);
+        screenX = entLookup.playerRef.x;
+        screenY = entLookup.playerRef.y;
+        CTX.lineWidth = 1;
+        entLookup.asteroids = new Array(50);
+        for (index = 0; index < 50; index++) {
+            entLookup.entities.push(new Asteroid(
 				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
-			entRef = entities[index + 10];
+            entRef = entLookup.entities[index + 10];
 			// move out of the way if on top of the player
-			if (distance(entRef.x, entRef.y, playerRef.x, playerRef.y) < 100) {
+			if (distance(entRef.x, entRef.y, entLookup.playerRef.x, entLookup.playerRef.y) < 100) {
 				entRef.x += entRef.collRadius;
 			}
 			// register each asteroid
-			asteroids[index] = entRef;
-			asteroidCount++;
+			entLookup.asteroids[index] = entRef;
+        }
+        entLookup.miners = new Array();
+        for (index = 0; index < 10; index++) {
+            entLookup.entities.push(new Miner());
+            entLookup.entities[entLookup.entities.length - 1].activate(
+                (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
+				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
+                entLookup);
+            entLookup.miners.push(entLookup.entities[entLookup.entities.length - 1]);
 		}
-		miners = new Array();
-		entities.push(new Miner());
-		entities[entities.length - 1].activate(300, 300);
-		miners.push(entities[entities.length - 1]);
-		minerCount++;
-		entities.push(new Miner());
-		entities[entities.length - 1].activate(320, 320);
-		miners.push(entities[entities.length - 1]);
-		minerCount++;
-		entities.push(new Miner());
-		entities[entities.length - 1].activate(340, 340);
-		miners.push(entities[entities.length - 1]);
-		minerCount++;
-		entities.push(new Miner());
-		entities[entities.length - 1].activate(360, 360);
-		miners.push(entities[entities.length - 1]);
-		minerCount++;
-		entities.push(new Miner());
-		entities[entities.length - 1].activate(380, 380);
-		miners.push(entities[entities.length - 1]);
-		minerCount++;
-		enemyBullets = new Array();
+		entLookup.enemyBullets = new Array();
 		for (index = 0; index < 20; index++) {
-			entities.push(new EnemyBullet());
-			enemyBullets[index] = entities[entities.length - 1];
-			enemyBulletCount++;
+			entLookup.entities.push(new EnemyBullet());
+			entLookup.enemyBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
-		shooters = new Array();
-		entities.push(new Shooter());
-		entities[entities.length - 1].activate(450, 450);
-		shooters.push(entities[entities.length - 1]);
-		shooterCount++;
-		crystals = new Array();
+		entLookup.shooters = new Array();
+		entLookup.entities.push(new Shooter());
+		entLookup.entities[entLookup.entities.length - 1].activate(450, 450);
+		entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
+		entLookup.crystals = new Array();
 		for (index = 0; index < 30; index++) {
-			entities.push(new Crystal());
-			crystals[index] = entities[entities.length - 1];
-			crystalCount++;
+			entLookup.entities.push(new Crystal());
+			entLookup.crystals[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
-		playerBullets = new Array();
+		entLookup.playerBullets = new Array();
 		for (index = 0; index < 20; index++) {
-			entities.push(new PlayerBullet());
-			playerBullets[index] = entities[entities.length - 1];
-			playerBulletCount++;
+			entLookup.entities.push(new PlayerBullet());
+			entLookup.playerBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
 		document.onkeydown = keyDownHandler;
 		document.onkeyup = keyUpHandler;
@@ -118,15 +101,16 @@
 			var curEnt;
 			var mmX; // minimap x, y
 			var mmY;
+            var plrRef = entLookup.playerRef;
 			
 			timeDelta += timeStamp - lastFrameTimestamp;
 			timeDelta = timeDelta > MAX_TIME_DELTA ? MAX_TIME_DELTA : timeDelta;
 			lastFrameTimestamp = timeStamp;
 			// Interpolate state updates
 			while (timeDelta >= TIMESTEP) {
-				for (entIndex = 0; entIndex < entities.length; entIndex++) {
-					if (entities[entIndex].active) {
-						entities[entIndex].updateState(TIMESTEP);
+				for (entIndex = 0; entIndex < entLookup.entities.length; entIndex++) {
+					if (entLookup.entities[entIndex].active) {
+						entLookup.entities[entIndex].updateState(TIMESTEP, entLookup);
 					}
 				}
 				timeDelta -= TIMESTEP;
@@ -134,10 +118,10 @@
 			// Drawing
 			CTX.clearRect(0, 0, CANVAS.width, CANVAS.height); // clear the canvas
 			// Draw entities
-			for (entIndex = 0; entIndex < entities.length; entIndex++) {
-				curEnt = entities[entIndex];
+			for (entIndex = 0; entIndex < entLookup.entities.length; entIndex++) {
+				curEnt = entLookup.entities[entIndex];
 				if (curEnt.active) {
-					entities[entIndex].draw();
+					entLookup.entities[entIndex].draw();
 				}
 			}
 			// Draw HUD
@@ -148,22 +132,22 @@
 			CTX.beginPath();
 			CTX.strokeStyle = "#FFFF00";
 			// visible distance rectangle
-			CTX.rect(mmLeft + HUD_HEIGHT / 2 - (playerRef.x - screenX + CANVAS.width / 2) / MINIMAP_SCALE,
-				HUD_HEIGHT / 2 - (playerRef.y - screenY + (CANVAS.height - HUD_HEIGHT) / 2) / MINIMAP_SCALE,
+			CTX.rect(mmLeft + HUD_HEIGHT / 2 - (plrRef.x - screenX + CANVAS.width / 2) / MINIMAP_SCALE,
+				HUD_HEIGHT / 2 - (plrRef.y - screenY + (CANVAS.height - HUD_HEIGHT) / 2) / MINIMAP_SCALE,
 				CANVAS.width / MINIMAP_SCALE,
 				(CANVAS.height - HUD_HEIGHT) / MINIMAP_SCALE);
 			CTX.stroke();
 			// Draw minimap blips
-			for (entIndex = 0; entIndex < entities.length; entIndex++) {
-				curEnt = entities[entIndex];
+			for (entIndex = 0; entIndex < entLookup.entities.length; entIndex++) {
+				curEnt = entLookup.entities[entIndex];
 				if (!curEnt.active || !curEnt.blipColor) {
 					continue;
 				}
-				mmX = mmLeft + HUD_HEIGHT / 2 - 1 + (curEnt.x - playerRef.x) / MINIMAP_SCALE;
+				mmX = mmLeft + HUD_HEIGHT / 2 - 1 + (curEnt.x - plrRef.x) / MINIMAP_SCALE;
 				if (mmX - 1 < mmLeft || mmX + 1 >= mmLeft + HUD_HEIGHT) {
 					continue;
 				}
-				mmY = HUD_HEIGHT / 2 - 1 + (curEnt.y - playerRef.y) / MINIMAP_SCALE;
+				mmY = HUD_HEIGHT / 2 - 1 + (curEnt.y - plrRef.y) / MINIMAP_SCALE;
 				if (mmY < 0 || mmY + 1 >= HUD_HEIGHT) {
 					continue;
 				}
@@ -176,16 +160,16 @@
 	function keyDownHandler(e) {
         switch(e.keyCode) {
             case 38: // up
-                playerRef.throttle = true;
+                throttlePressed = true;
                 break;
             case 37: // left
-                playerRef.angleDelta = .005;
+                leftPressed = true;
                 break;
             case 39: // right
-                playerRef.angleDelta = -.005;
+                rightPressed = true;
                 break;
 			case 32: // space
-				playerRef.shooting = true;
+				shootPressed = true;
             default:
                 break;
         }
@@ -193,14 +177,16 @@
     function keyUpHandler(e) {
         switch(e.keyCode) {
             case 38: // up
-                playerRef.throttle = false;
+                throttlePressed = false;
                 break;
             case 37: // left
+                leftPressed = false;
+                break;
             case 39: // right
-                playerRef.angleDelta = 0;
+                rightPressed = false;
                 break;
 			case 32: // space
-				playerRef.shooting = false;
+				shootPressed = false;
             default:
                 break;
         }
@@ -277,14 +263,14 @@
 		
 		return null;
 	};
-	function checkCollision(subject) {
+	function checkCollision(subject, elu) {
 		var entIndex;
 		var other;
 		var ret;
 		
 		// start at 9 because the boss occupies 0-7 and player occupies 8
-		for (entIndex = 9; entIndex < entities.length; entIndex++) {
-			other = entities[entIndex];
+		for (entIndex = 9; entIndex < elu.entities.length; entIndex++) {
+			other = elu.entities[entIndex];
 			if (!other.active || other == subject) {
 				continue;
 			}
@@ -299,7 +285,7 @@
     function getRandomIndex(arr) {
         return arr[Math.round(Math.random() * (arr.length - 1))];
     };
-	function moveSelf(delta) {
+	function moveSelf(delta, elu) {
 		var oldAngle;
 		var velSign;
 		var other;
@@ -309,7 +295,7 @@
 		this.angle += this.angleDelta * delta;
 		this.updateCollLines();
 		// angular collision
-		if (checkCollision(this)) {
+		if (checkCollision(this, elu)) {
 			this.angle = oldAngle;
 			this.updateCollLines();
 		}
@@ -350,7 +336,7 @@
 		}
 		this.x += this.xVel * delta;
 		this.y += this.yVel * delta;
-		other = checkCollision(this);
+		other = checkCollision(this, elu);
 		if (other) {
 			this.xVel = -this.xVel;
 			this.yVel = -this.yVel;
@@ -400,11 +386,11 @@
 		return angleTo;
 	};
 	function kill(ent) {
-		displaceAngle = Math.random() * 2 * Math.PI;
+		var displaceAngle = Math.random() * 2 * Math.PI;
 		ent.x += Math.cos(displaceAngle) * MAX_DISTANCE;
 		ent.y += Math.sin(-displaceAngle) * MAX_DISTANCE;
 	};
-	function fieldWrap(ent) {
+	function fieldWrap(ent, playerRef) {
 		if (ent.x - playerRef.x > MAX_DISTANCE) {
 			ent.x = playerRef.x - MAX_DISTANCE + 2;
 		} else if (ent.x - playerRef.x < -MAX_DISTANCE) {
@@ -463,8 +449,17 @@
 	Player.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
-	Player.prototype.updateState = function (delta) {
-		moveSelf.call(this, delta);
+	Player.prototype.updateState = function (delta, elu) {
+        if (leftPressed) {
+            this.angleDelta = .005;
+        } else if (rightPressed) {
+            this.angleDelta = -.005;
+        } else {
+            this.angleDelta = 0;
+        }
+        this.throttle = throttlePressed;
+        this.shooting = shootPressed;
+		moveSelf.call(this, delta, elu);
 		// make the screen track the player
 		screenBoundX = Math.abs((this.xVel / this.maxVel)) * MAX_SCREEN_BOUND_X;
 		screenBoundY = Math.abs((this.yVel / this.maxVel)) * MAX_SCREEN_BOUND_Y;
@@ -482,8 +477,8 @@
 		}
 		// shoot
 		if (this.shooting && performance.now() - this.lastShotTime >= this.coolDown) {
-			playerBullets[playerBulletInd].activate(this.x, this.y, this.angle + Math.PI / 2);
-			playerBulletInd = (playerBulletInd + 1) % playerBulletCount;
+			elu.playerBullets[elu.playerBulletInd].activate(this.x, this.y, this.angle + Math.PI / 2);
+			elu.playerBulletInd = (elu.playerBulletInd + 1) % elu.playerBullets.length;
 			this.lastShotTime = performance.now();
 		}
 	};
@@ -540,22 +535,22 @@
 	Asteroid.prototype.maxHeat = 5;
 	Asteroid.prototype.minCooldown = 1500;
 	Asteroid.prototype.lastCrystalTime = 0;
-	Asteroid.prototype.updateState = function (delta) {
+	Asteroid.prototype.updateState = function (delta, elu) {
 		if (this.heat > 0) {
 			this.heat -= .002 * delta;
 			if (this.heat < 0) {
 				this.heat = 0;
 			} else if (this.heat > 0) {
 				if (performance.now() - this.lastCrystalTime > this.minCooldown * (this.maxHeat / this.heat)) {
-					crystals[crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI);
-					crystalInd = (crystalInd + 1) % crystalCount;
+					elu.crystals[elu.crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI, elu);
+					elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
 					this.lastCrystalTime = performance.now();
 				}
 			}
 		}
 		this.x += this.xVel * delta;
 		this.y += this.yVel * delta;
-		fieldWrap(this);
+		fieldWrap(this, elu.playerRef);
 	};
 	Asteroid.prototype.heatUp = function (amount) {
 		var displaceAngle;
@@ -610,18 +605,18 @@
 	Miner.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
-	Miner.prototype.updateState = function (delta) {
+	Miner.prototype.updateState = function (delta, elu) {
 		var angleToTarget = 0;
 		var minTargetDist = this.target instanceof Asteroid ? 200 : 5;
 		
 		// update target
-		if (this.hasCrystal && this.target != bossRef && !bossRef.isComplete()) {
-			this.target = bossRef;
+		if (this.hasCrystal && this.target != elu.bossRef && !elu.bossRef.isComplete()) {
+			this.target = elu.bossRef;
 		} else if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < minTargetDist) {
-			this.target = getRandomIndex(asteroids);
+			this.target = getRandomIndex(elu.asteroids);
 		}
-		if (this.target == bossRef && bossRef.isComplete()) {
-			this.target = getRandomIndex(asteroids);
+		if (this.target == elu.bossRef && elu.bossRef.isComplete()) {
+			this.target = getRandomIndex(elu.asteroids);
 		}
 		// movement
 		this.angle = wrapAngle(this.angle);
@@ -644,24 +639,24 @@
 		if (!this.throttle && performance.now() - this.lastBump >= this.bumpCooldown) {
 			this.throttle = true;
 		}
-		if (moveSelf.call(this, delta) instanceof Asteroid) {
+		if (moveSelf.call(this, delta, elu) instanceof Asteroid) {
 			this.lastBump = performance.now();
 			this.throttle = false;
 		}
 	};
-	Miner.prototype.activate = function (x, y) {
+	Miner.prototype.activate = function (x, y, elu) {
 		this.x = x;
 		this.y = y;
-		this.target = getRandomIndex(asteroids);
+		this.target = getRandomIndex(elu.asteroids);
 		this.active = true;
 	};
-	Miner.prototype.kill = function () {
+	Miner.prototype.kill = function (elu) {
 		if (this.hasCrystal) {
-			crystals[crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI);
-			crystalInd = (crystalInd + 1) % crystalCount;
+			elu.crystals[elu.crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI);
+			elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
 		}
 		this.hasCrystal = false;
-		this.target = getRandomIndex(asteroids);
+		this.target = getRandomIndex(elu.asteroids);
 		kill(this);
 	};
 	Miner.prototype.draw = function () {
@@ -711,7 +706,7 @@
 	Shooter.prototype.updateCollLines = function () {
 		// doesn't rotate
 	};
-	Shooter.prototype.updateState = function (delta) {
+	Shooter.prototype.updateState = function (delta, elu) {
 		var angleToTarget = 0;
 		
 		if (this.health < 1) {
@@ -738,20 +733,20 @@
 				}
 			}
 			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 200);
-			moveSelf.call(this, delta);
+			moveSelf.call(this, delta, elu);
 			// shoot
 			if (distance(this.x, this.y, this.target.x, this.target.y) < 250 &&
 					performance.now() - this.lastShotTime >= this.coolDown) {
-				enemyBullets[enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
-				enemyBulletInd = (enemyBulletInd + 1) % enemyBulletCount;
+				elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
+				elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
 				this.lastShotTime = performance.now();
 			}
 		} else {
-			if (distance(this.x, this.y, playerRef.x, playerRef.y) < 800) {
-				this.target = playerRef;
+			if (distance(this.x, this.y, elu.playerRef.x, elu.playerRef.y) < 800) {
+				this.target = elu.playerRef;
 			}
 		}
-		fieldWrap(this);
+		fieldWrap(this, elu.playerRef);
 	};
 	Shooter.prototype.activate = function (x, y) {
 		this.x = x;
@@ -790,7 +785,7 @@
 		this.yVel = Math.sin(-dir) * this.muzzleVel;
 		this.active = true;
 	};
-	EnemyBullet.prototype.updateState = function (delta) {
+	EnemyBullet.prototype.updateState = function (delta, elu) {
 		var now = performance.now();
 		var entInd;
 		
@@ -800,14 +795,14 @@
 		}
 		this.x += this.xVel * delta;
 		this.y += this.yVel * delta;
-		for (entInd = 0; entInd < asteroids.length; entInd++) {
-			if (circleCollidingWith(this, asteroids[entInd])) {
-				asteroids[entInd].heatUp(3);
+		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
+			if (circleCollidingWith(this, elu.asteroids[entInd])) {
+				elu.asteroids[entInd].heatUp(3);
 				this.active = false;
 				return;
 			}
 		}
-		if (circleCollidingWith(this, playerRef)) {
+		if (circleCollidingWith(this, elu.playerRef)) {
 			this.active = false;
 		}
 	};
@@ -830,7 +825,7 @@
 		this.yVel = Math.sin(-dir) * this.muzzleVel;
 		this.active = true;
 	};
-	PlayerBullet.prototype.updateState = function (delta) {
+	PlayerBullet.prototype.updateState = function (delta, elu) {
 		var now = performance.now();
 		var entInd;
 		
@@ -840,23 +835,23 @@
 		}
 		this.x += this.xVel * delta;
 		this.y += this.yVel * delta;
-		for (entInd = 0; entInd < asteroids.length; entInd++) {
-			if (circleCollidingWith(this, asteroids[entInd])) {
-				asteroids[entInd].heatUp(1);
+		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
+			if (circleCollidingWith(this, elu.asteroids[entInd])) {
+				elu.asteroids[entInd].heatUp(1);
 				this.active = false;
 				return;
 			}
 		}
-		for (entInd = 0; entInd < miners.length; entInd++) {
-			if (circleCollidingWith(this, miners[entInd])) {
-				miners[entInd].kill();
+		for (entInd = 0; entInd < elu.miners.length; entInd++) {
+			if (circleCollidingWith(this, elu.miners[entInd])) {
+				elu.miners[entInd].kill(elu);
 				this.active = false;
 				return;
 			}
 		}
-		for (entInd = 0; entInd < shooters.length; entInd++) {
-			if (circleCollidingWith(this, shooters[entInd])) {
-				shooters[entInd].health -= 1;
+		for (entInd = 0; entInd < elu.shooters.length; entInd++) {
+			if (circleCollidingWith(this, elu.shooters[entInd])) {
+				elu.shooters[entInd].health -= 1;
 				this.active = false;
 				return;
 			}
@@ -873,7 +868,7 @@
 	Crystal.prototype.maxVel = .07;
 	Crystal.prototype.birthTime = 0;
 	Crystal.prototype.lifeSpan = 10000;
-	Crystal.prototype.activate = function (x, y, dir) {
+	Crystal.prototype.activate = function (x, y, dir, elu) {
 		var minerInd;
 		var miner;
 		
@@ -882,16 +877,16 @@
 		this.y = y;
 		this.xVel = Math.cos(dir) * this.maxVel;
 		this.yVel = Math.sin(-dir) * this.maxVel;
-		for (minerInd = 0; minerInd < minerCount; minerInd++) {
-			miner = miners[minerInd];
-			if (miners[minerInd].active && !(miners[minerInd].target instanceof Crystal) && !miners[minerInd].hasCrystal) {
-				miners[minerInd].target = this;
+		for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
+			miner = elu.miners[minerInd];
+			if (elu.miners[minerInd].active && !(elu.miners[minerInd].target instanceof Crystal) && !elu.miners[minerInd].hasCrystal) {
+				elu.miners[minerInd].target = this;
 				break;
 			}
 		}
 		this.active = true;
 	};
-	Crystal.prototype.updateState = function (delta) {
+	Crystal.prototype.updateState = function (delta, elu) {
 		var now = performance.now();
 		var minerInd;
 		var other;
@@ -902,8 +897,8 @@
 		}
 		this.x += this.xVel * delta;
 		this.y += this.yVel * delta;
-		for (minerInd = 0; minerInd < minerCount; minerInd++) {
-			other = circleCollidingWith(this, miners[minerInd]);
+		for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
+			other = circleCollidingWith(this, elu.miners[minerInd]);
 			if (other && other.active && !other.hasCrystal) {
 				other.hasCrystal = true;
 				this.active = false;
@@ -927,20 +922,20 @@
 	Boss.prototype.angleToTarget = 0;
 	Boss.prototype.turnSpeed = .002;
 	Boss.prototype.activePieces = 0;
-	Boss.prototype.updateState = function (delta) {
+	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
 		var miner;
 		
-		this.x = bossRef.x;
-		this.y = bossRef.y;
+		this.x = elu.bossRef.x;
+		this.y = elu.bossRef.y;
 		if (!this.isComplete()) {
-			for (minerInd = 0; minerInd < minerCount; minerInd++) {
-				miner = miners[minerInd];
-				if (distance(this.x, this.y, miner.x, miner.y) < 30 && miner.hasCrystal) {
+			for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
+				miner = elu.miners[minerInd];
+				if (distance(this.x, this.y, miner.x, miner.y) < 25 && miner.hasCrystal) {
 					this.activePieces++;
-					bossPieces[this.activePieces - 1].active = true;
+					elu.bossPieces[this.activePieces - 1].active = true;
 					miner.hasCrystal = false;
-					miner.kill();
+					miner.kill(elu);
 				}
 			}
 		}
