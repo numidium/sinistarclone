@@ -1,28 +1,25 @@
 (function () {
     var CANVAS = document.getElementById('gameCanvas');
     var CTX = CANVAS.getContext('2d');
-    var TIMESTEP = 10; // How finely the state is interpolated between frames. Higher = choppier.
 	var HUD_HEIGHT = 80;
 	var MINIMAP_SCALE = 30;
 	var MAX_DISTANCE = 1500;
-	var mmLeft = CANVAS.width / 2 - HUD_HEIGHT / 2;
-    var timeDelta = 0;
-	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolatinginterpolating
-	var SHOOTER_RADIUS = 17;
+	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolating
+    var MINER_RADIUS = 14;
+    var SHOOTER_RADIUS = 17;
 	var BOSS_RADIUS = 100;
-    var lastFrameTimestamp = 0;
-	var screenX;
-	var screenY;
 	var MAX_SCREEN_BOUND_X = 100;
 	var MAX_SCREEN_BOUND_Y = 50;
 	var screenBoundX;
 	var screenBoundY;
-    var leftPressed = false;
-    var rightPressed = false;
-    var throttlePressed = false;
-    var shootPressed = false;
+	var screenX;
+	var screenY;
 	function startGame() {
 		// Setup
+        var TIMESTEP = 10; // How finely the state is interpolated between frames. Higher = choppier.
+        var lastFrameTimestamp = 0;
+        var timeDelta = 0;
+        var mmLeft = CANVAS.width / 2 - HUD_HEIGHT / 2;
         var index;
         var entRef;
         var entLookup = {
@@ -40,7 +37,42 @@
             enemyBullets: [],
             enemyBulletInd: 0
         };
-        
+        function keyDownHandler(e) {
+            switch(e.keyCode) {
+                case 38: // up
+                    entLookup.playerRef.throttle = true;
+                    break;
+                case 37: // left
+                    entLookup.playerRef.angleDelta = .005;
+                    break;
+                case 39: // right
+                    entLookup.playerRef.angleDelta = -.005;
+                    break;
+                case 32: // space
+                    entLookup.playerRef.shooting = true;
+                default:
+                    break;
+            }
+        };
+        function keyUpHandler(e) {
+            switch(e.keyCode) {
+                case 38: // up
+                    entLookup.playerRef.throttle = false;
+                    break;
+                case 37: // left
+                case 39: // right
+                    entLookup.playerRef.angleDelta = 0;
+                    break;
+                case 32: // space
+                    entLookup.playerRef.shooting = false;
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        document.onkeydown = keyDownHandler;
+		document.onkeyup = keyUpHandler;
         entLookup.bossRef = new Boss();
         entLookup.entities.push(entLookup.bossRef);
         for (index = 0; index < 8; index++) {
@@ -93,8 +125,6 @@
 			entLookup.entities.push(new PlayerBullet());
 			entLookup.playerBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
-		document.onkeydown = keyDownHandler;
-		document.onkeyup = keyUpHandler;
 		requestAnimationFrame(mainLoop); // Begin loop
 		function mainLoop(timeStamp) {
 			var entIndex;
@@ -156,40 +186,6 @@
 			}
 			requestAnimationFrame(mainLoop);
 		};
-    };
-	function keyDownHandler(e) {
-        switch(e.keyCode) {
-            case 38: // up
-                throttlePressed = true;
-                break;
-            case 37: // left
-                leftPressed = true;
-                break;
-            case 39: // right
-                rightPressed = true;
-                break;
-			case 32: // space
-				shootPressed = true;
-            default:
-                break;
-        }
-    };
-    function keyUpHandler(e) {
-        switch(e.keyCode) {
-            case 38: // up
-                throttlePressed = false;
-                break;
-            case 37: // left
-                leftPressed = false;
-                break;
-            case 39: // right
-                rightPressed = false;
-                break;
-			case 32: // space
-				shootPressed = false;
-            default:
-                break;
-        }
     };
     function distance(x0, y0, x1, y1) {
         return Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
@@ -285,89 +281,6 @@
     function getRandomIndex(arr) {
         return arr[Math.round(Math.random() * (arr.length - 1))];
     };
-	function moveSelf(delta, elu) {
-		var oldAngle;
-		var velSign;
-		var other;
-		var angleToOther;
-		
-		oldAngle = this.angle;
-		this.angle += this.angleDelta * delta;
-		this.updateCollLines();
-		// angular collision
-		if (checkCollision(this, elu)) {
-			this.angle = oldAngle;
-			this.updateCollLines();
-		}
-		if (this.throttle) {
-			this.xVelDelta = this.accel * Math.cos(this.angle + Math.PI / 2);
-			this.yVelDelta = this.accel * Math.sin(-(this.angle + Math.PI / 2));
-		} else {
-			// slow to a stop
-			if (Math.abs(this.xVel) > this.accel) {
-				this.velSign = this.xVel >= 0 ? -1 : 1;
-				this.xVelDelta = this.velSign * (this.accel / 3);
-			} else {
-				this.xVelDelta = 0;
-				this.xVel = 0;
-			}
-			if (Math.abs(this.yVel) > this.accel) {
-				this.velSign = this.yVel >= 0 ? -1 : 1;
-				this.yVelDelta = this.velSign * (this.accel / 3);
-			} else {
-				this.yVelDelta = 0;
-				this.yVel = 0;
-			}
-		}
-		// Velocity is in units of pixels per millisecond.
-		this.xVel += this.xVelDelta * delta;
-		this.yVel += this.yVelDelta * delta;
-		if (this.xVel > this.maxVel) {
-			this.xVel = this.maxVel;
-		}
-		if (this.yVel > this.maxVel) {
-			this.yVel = this.maxVel;
-		}
-		if (this.xVel < -this.maxVel) {
-			this.xVel = -this.maxVel;
-		}
-		if (this.yVel < -this.maxVel) {
-			this.yVel = -this.maxVel;
-		}
-		this.x += this.xVel * delta;
-		this.y += this.yVel * delta;
-		other = checkCollision(this, elu);
-		if (other) {
-			this.xVel = -this.xVel;
-			this.yVel = -this.yVel;
-			if (other) { // something bumped me
-				if ((this.xVel > 0 && this.xVel < other.xVel) ||
-					(this.xVel < 0 && -1 * this.xVel < other.xVel) ||
-					(this.xVel < 0 && this.xVel > other.xVel) ||
-					(this.xVel > 0 && -1 * this.xVel > other.xVel) ||
-					this.xVel == 0) {
-					this.xVel = other.xVel * 2;
-				}
-				if ((this.yVel > 0 && this.yVel < other.yVel) ||
-					(this.yVel < 0 && -1 * this.yVel < other.yVel) ||
-					(this.yVel < 0 && this.yVel > other.yVel) ||
-					(this.yVel > 0 && -1 * this.yVel > other.yVel) ||
-					this.yVel == 0) {
-					this.yVel = other.yVel * 2;
-				}				
-			}
-			// bounce away cleanly
-			do {
-				angleToOther = getAngleTo(other, this);
-				this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
-				this.y -= Math.abs(this.yVel) * Math.sin(angleToOther + Math.PI / 2) * delta;
-			} while (collidingWith(this, other));
-			
-			return other;
-		}
-		
-		return null;
-	};
 	function wrapAngle(angle) {
 		if (angle > 2 * Math.PI) {
 			return angle - 2 * Math.PI;
@@ -431,7 +344,90 @@
 		throttle: false,
 		angleDelta: 0,
 		collLines: [],
-		active: false
+		active: false,
+        moveSelf: function (delta, elu) {
+            var oldAngle;
+            var velSign;
+            var other;
+            var angleToOther;
+            
+            oldAngle = this.angle;
+            this.angle += this.angleDelta * delta;
+            this.updateCollLines();
+            // angular collision
+            if (checkCollision(this, elu)) {
+                this.angle = oldAngle;
+                this.updateCollLines();
+            }
+            if (this.throttle) {
+                this.xVelDelta = this.accel * Math.cos(this.angle + Math.PI / 2);
+                this.yVelDelta = this.accel * Math.sin(-(this.angle + Math.PI / 2));
+            } else {
+                // slow to a stop
+                if (Math.abs(this.xVel) > this.accel) {
+                    this.velSign = this.xVel >= 0 ? -1 : 1;
+                    this.xVelDelta = this.velSign * (this.accel / 3);
+                } else {
+                    this.xVelDelta = 0;
+                    this.xVel = 0;
+                }
+                if (Math.abs(this.yVel) > this.accel) {
+                    this.velSign = this.yVel >= 0 ? -1 : 1;
+                    this.yVelDelta = this.velSign * (this.accel / 3);
+                } else {
+                    this.yVelDelta = 0;
+                    this.yVel = 0;
+                }
+            }
+            // Velocity is in units of pixels per millisecond.
+            this.xVel += this.xVelDelta * delta;
+            this.yVel += this.yVelDelta * delta;
+            if (this.xVel > this.maxVel) {
+                this.xVel = this.maxVel;
+            }
+            if (this.yVel > this.maxVel) {
+                this.yVel = this.maxVel;
+            }
+            if (this.xVel < -this.maxVel) {
+                this.xVel = -this.maxVel;
+            }
+            if (this.yVel < -this.maxVel) {
+                this.yVel = -this.maxVel;
+            }
+            this.x += this.xVel * delta;
+            this.y += this.yVel * delta;
+            other = checkCollision(this, elu);
+            if (other) {
+                this.xVel = -this.xVel;
+                this.yVel = -this.yVel;
+                if (other) { // something bumped me
+                    if ((this.xVel > 0 && this.xVel < other.xVel) ||
+                        (this.xVel < 0 && -1 * this.xVel < other.xVel) ||
+                        (this.xVel < 0 && this.xVel > other.xVel) ||
+                        (this.xVel > 0 && -1 * this.xVel > other.xVel) ||
+                        this.xVel == 0) {
+                        this.xVel = other.xVel * 2;
+                    }
+                    if ((this.yVel > 0 && this.yVel < other.yVel) ||
+                        (this.yVel < 0 && -1 * this.yVel < other.yVel) ||
+                        (this.yVel < 0 && this.yVel > other.yVel) ||
+                        (this.yVel > 0 && -1 * this.yVel > other.yVel) ||
+                        this.yVel == 0) {
+                        this.yVel = other.yVel * 2;
+                    }				
+                }
+                // bounce away cleanly
+                do {
+                    angleToOther = getAngleTo(other, this);
+                    this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
+                    this.y -= Math.abs(this.yVel) * Math.sin(angleToOther + Math.PI / 2) * delta;
+                } while (collidingWith(this, other));
+                
+                return other;
+            }
+            
+            return null;
+        }
 	};
     function Player() {};
     Player.prototype = Object.create(Entity.prototype);
@@ -450,16 +446,7 @@
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
 	Player.prototype.updateState = function (delta, elu) {
-        if (leftPressed) {
-            this.angleDelta = .005;
-        } else if (rightPressed) {
-            this.angleDelta = -.005;
-        } else {
-            this.angleDelta = 0;
-        }
-        this.throttle = throttlePressed;
-        this.shooting = shootPressed;
-		moveSelf.call(this, delta, elu);
+		this.moveSelf(delta, elu);
 		// make the screen track the player
 		screenBoundX = Math.abs((this.xVel / this.maxVel)) * MAX_SCREEN_BOUND_X;
 		screenBoundY = Math.abs((this.yVel / this.maxVel)) * MAX_SCREEN_BOUND_Y;
@@ -595,7 +582,7 @@
 	Miner.prototype.blipColor = "#FF0000";
 	Miner.prototype.accel = .0015;
 	Miner.prototype.maxVel = .21;
-	Miner.prototype.collRadius = 13;
+	Miner.prototype.collRadius = MINER_RADIUS;
 	Miner.prototype.target = null;
 	Miner.prototype.angleToTarget = 0;
 	Miner.prototype.turnSpeed = .007;
@@ -639,7 +626,7 @@
 		if (!this.throttle && performance.now() - this.lastBump >= this.bumpCooldown) {
 			this.throttle = true;
 		}
-		if (moveSelf.call(this, delta, elu) instanceof Asteroid) {
+		if (this.moveSelf(delta, elu) instanceof Asteroid) {
 			this.lastBump = performance.now();
 			this.throttle = false;
 		}
@@ -684,18 +671,18 @@
 	Shooter.prototype.accel = .0007;
 	Shooter.prototype.maxVel = .2;
 	Shooter.prototype.collRadius = SHOOTER_RADIUS;
-	Shooter.prototype.collLines = [SHOOTER_RADIUS,
+	Shooter.prototype.collLines = [Shooter.prototype.collRadius,
 				0,
-				Math.cos(Math.PI / 3) * SHOOTER_RADIUS,
-				Math.sin(-Math.PI / 3) * SHOOTER_RADIUS,
-				Math.cos(Math.PI * (2 / 3)) * SHOOTER_RADIUS,
-				Math.sin(-Math.PI * (2 / 3)) * SHOOTER_RADIUS,
-				Math.cos(Math.PI) * SHOOTER_RADIUS,
-				Math.sin(-Math.PI) * SHOOTER_RADIUS,
-				Math.cos(Math.PI * (4 / 3)) * SHOOTER_RADIUS,
-				Math.sin(-Math.PI * (4 / 3)) * SHOOTER_RADIUS,
-				Math.cos(Math.PI * (5 / 3)) * SHOOTER_RADIUS,
-				Math.sin(-Math.PI * (5 / 3)) * SHOOTER_RADIUS],
+				Math.cos(Math.PI / 3) * Shooter.prototype.collRadius,
+				Math.sin(-Math.PI / 3) * Shooter.prototype.collRadius,
+				Math.cos(Math.PI * (2 / 3)) * Shooter.prototype.collRadius,
+				Math.sin(-Math.PI * (2 / 3)) * Shooter.prototype.collRadius,
+				Math.cos(Math.PI) * Shooter.prototype.collRadius,
+				Math.sin(-Math.PI) * Shooter.prototype.collRadius,
+				Math.cos(Math.PI * (4 / 3)) * Shooter.prototype.collRadius,
+				Math.sin(-Math.PI * (4 / 3)) * Shooter.prototype.collRadius,
+				Math.cos(Math.PI * (5 / 3)) * Shooter.prototype.collRadius,
+				Math.sin(-Math.PI * (5 / 3)) * Shooter.prototype.collRadius],
 	Shooter.prototype.target = null;
 	Shooter.prototype.angleToTarget = 0;
 	Shooter.prototype.turnSpeed = .002;
@@ -733,7 +720,7 @@
 				}
 			}
 			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 200);
-			moveSelf.call(this, delta, elu);
+			this.moveSelf(delta, elu);
 			// shoot
 			if (distance(this.x, this.y, this.target.x, this.target.y) < 250 &&
 					performance.now() - this.lastShotTime >= this.coolDown) {
@@ -965,65 +952,65 @@
 			case 0:
 				this.collLines = [0,
 					0,
-					BOSS_RADIUS,
+					Boss.prototype.collRadius,
 					0,
-					Math.cos(Math.PI / 4) * BOSS_RADIUS,
-					Math.sin(-Math.PI / 4) * BOSS_RADIUS];
+					Math.cos(Math.PI / 4) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI / 4) * Boss.prototype.collRadius];
 				break;
 			case 1:
 				this.collLines = [0,
 					0,
-					Math.cos(Math.PI / 4) * BOSS_RADIUS,
-					Math.sin(-Math.PI / 4) * BOSS_RADIUS,
-					Math.cos(Math.PI / 2) * BOSS_RADIUS,
-					Math.sin(-Math.PI / 2) * BOSS_RADIUS];
+					Math.cos(Math.PI / 4) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI / 4) * Boss.prototype.collRadius,
+					Math.cos(Math.PI / 2) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI / 2) * Boss.prototype.collRadius];
 					break;
 			case 2:
 				this.collLines = [0,
 					0,
-					Math.cos(Math.PI / 2) * BOSS_RADIUS,
-					Math.sin(-Math.PI / 2) * BOSS_RADIUS,
-					Math.cos(Math.PI * (3 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (3 / 4)) * BOSS_RADIUS];
+					Math.cos(Math.PI / 2) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI / 2) * Boss.prototype.collRadius,
+					Math.cos(Math.PI * (3 / 4)) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI * (3 / 4)) * Boss.prototype.collRadius];
 				break;
 			case 3:
 				this.collLines = [0,
 					0,
-					Math.cos(Math.PI * (3 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (3 / 4)) * BOSS_RADIUS,
-					Math.cos(Math.PI) * BOSS_RADIUS,
-					Math.sin(-Math.PI) * BOSS_RADIUS];
+					Math.cos(Math.PI * (3 / 4)) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI * (3 / 4)) * Boss.prototype.collRadius,
+					Math.cos(Math.PI) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI) * Boss.prototype.collRadius];
 				break;
 			case 4:
 				this.collLines = [0,
 					0,
-					Math.cos(Math.PI) * BOSS_RADIUS,
-					Math.sin(-Math.PI) * BOSS_RADIUS,
-					Math.cos(Math.PI * (5 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (5 / 4)) * BOSS_RADIUS];
+					Math.cos(Math.PI) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI) * Boss.prototype.collRadius,
+					Math.cos(Math.PI * (5 / 4)) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI * (5 / 4)) * Boss.prototype.collRadius];
 				break;
 			case 5:
 				this.collLines = [0,
 					0,
-					Math.cos(Math.PI * (5 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (5 / 4)) * BOSS_RADIUS,
-					Math.cos(Math.PI * (3 / 2)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (3 / 2)) * BOSS_RADIUS];
+					Math.cos(Math.PI * (5 / 4)) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI * (5 / 4)) * Boss.prototype.collRadius,
+					Math.cos(Math.PI * (3 / 2)) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI * (3 / 2)) * Boss.prototype.collRadius];
 				break;
 			case 6:
 				this.collLines = [0,
 					0,
-					Math.cos(Math.PI * (3 / 2)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (3 / 2)) * BOSS_RADIUS,
-					Math.cos(Math.PI * (7 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (7 / 4)) * BOSS_RADIUS];
+					Math.cos(Math.PI * (3 / 2)) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI * (3 / 2)) * Boss.prototype.collRadius,
+					Math.cos(Math.PI * (7 / 4)) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI * (7 / 4)) * Boss.prototype.collRadius];
 				break;
 			case 7:
 				this.collLines = [0,
 					0,
-					Math.cos(Math.PI * (7 / 4)) * BOSS_RADIUS,
-					Math.sin(-Math.PI * (7 / 4)) * BOSS_RADIUS,
-					BOSS_RADIUS,
+					Math.cos(Math.PI * (7 / 4)) * Boss.prototype.collRadius,
+					Math.sin(-Math.PI * (7 / 4)) * Boss.prototype.collRadius,
+					Boss.prototype.collRadius,
 					0];
 				break;
 			default:
