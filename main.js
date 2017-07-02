@@ -331,6 +331,21 @@
 		CTX.fillStyle = fill;
 		CTX.fill();
 	};
+    function drawPolygon(x, y, collLines, fill) {
+        var index;
+
+        CTX.beginPath();
+        CTX.moveTo(CANVAS.width / 2 + (x - screenX) + collLines[0],
+            CANVAS.height / 2 + (y + HUD_HEIGHT / 2 - screenY) + collLines[1]);
+        for (index = 2; index < collLines.length - 1; index += 2) {
+            CTX.lineTo(CANVAS.width / 2 + (x - screenX) + collLines[index],
+                CANVAS.height / 2 + HUD_HEIGHT / 2 + (y - screenY) + collLines[index + 1]);
+        }
+        CTX.lineTo(CANVAS.width / 2 + (x - screenX) + collLines[0],
+                CANVAS.height / 2 + HUD_HEIGHT / 2 + (y - screenY) + collLines[1]);
+        CTX.fillStyle = fill;
+        CTX.fill();
+    };
     // Objects
 	function Entity() {};
 	Entity.prototype = {
@@ -552,27 +567,18 @@
 		}
 	};
 	Asteroid.prototype.draw = function () {
-		var index;
 		var rChannel;
 		var gbChannel;
+        var fill;
 		
-		CTX.beginPath();
-		CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-			CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
-		for (index = 2; index < this.collLines.length - 1; index += 2) {
-			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
-		}
-		CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
 		if (this.heat == 0) {
-			CTX.fillStyle = "#AAAAAA";
+			fill = "#AAAAAA";
 		} else {
 			rChannel = parseInt(170 + this.heat / this.maxHeat * 85);
 			gbChannel = parseInt(170 - this.heat / this.maxHeat * 170);
-			CTX.fillStyle = "rgba(" + rChannel + "," + gbChannel + "," + gbChannel + ", 1)";
+			fill = "rgba(" + rChannel + "," + gbChannel + "," + gbChannel + ", 1)";
 		}
-		CTX.fill();
+        drawPolygon(this.x, this.y, this.collLines, fill);
     };
 	function Miner() {
 		this.collLines = new Array(6);
@@ -647,19 +653,7 @@
 		kill(this);
 	};
 	Miner.prototype.draw = function () {
-		var index;
-		
-		CTX.beginPath();
-		CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-			CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
-		for (index = 2; index < this.collLines.length; index += 2) {
-			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
-		}
-		CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
-		CTX.fillStyle = "#FF0000";
-		CTX.fill();
+        drawPolygon(this.x, this.y, this.collLines, "#FF0000");
 		if (this.hasCrystal) {
 			drawCircle(this.x - screenX, this.y - screenY, Crystal.prototype.collRadius, "#5555FF");
 		}
@@ -742,19 +736,7 @@
 		this.health = this.maxHealth;
 	};
 	Shooter.prototype.draw = function () {
-		var index;
-		
-		CTX.beginPath();
-		CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-			CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
-		for (index = 2; index < this.collLines.length; index += 2) {
-			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
-		}
-		CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
-		CTX.fillStyle = "#AA00AA";
-		CTX.fill();
+        drawPolygon(this.x, this.y, this.collLines, "#AA00AA");
 	};
 	function EnemyBullet() {
 	};
@@ -1025,19 +1007,7 @@
 	bossPiece.prototype.updateState = function () {
 	};
 	bossPiece.prototype.draw = function () {
-		var index;
-		
-		CTX.beginPath();
-		CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-			CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
-		for (index = 0; index < this.collLines.length; index += 2) {
-			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
-		}
-		CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
-		CTX.fillStyle = "#444444";
-		CTX.fill();
+        drawPolygon(this.x, this.y, this.collLines, "#444444");
 	};
 	startGame();
 }());
