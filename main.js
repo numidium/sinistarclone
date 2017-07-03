@@ -70,62 +70,6 @@
                     break;
             }
         };
-
-        document.onkeydown = keyDownHandler;
-		document.onkeyup = keyUpHandler;
-        entLookup.bossRef = new Boss();
-        entLookup.entities.push(entLookup.bossRef);
-        for (index = 0; index < 8; index++) {
-            entLookup.entities.push(new bossPiece(0, 0, index));
-            entLookup.bossPieces[entLookup.bossPieces.length] = entLookup.entities[entLookup.entities.length - 1];
-        }
-        entLookup.playerRef = new Player();
-        entLookup.entities.push(entLookup.playerRef);
-        screenX = entLookup.playerRef.x;
-        screenY = entLookup.playerRef.y;
-        CTX.lineWidth = 1;
-        entLookup.asteroids = new Array(50);
-        for (index = 0; index < 50; index++) {
-            entLookup.entities.push(new Asteroid(
-				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
-				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
-            entRef = entLookup.entities[index + 10];
-			// move out of the way if on top of the player
-			if (distance(entRef.x, entRef.y, entLookup.playerRef.x, entLookup.playerRef.y) < 100) {
-				entRef.x += entRef.collRadius;
-			}
-			// register each asteroid
-			entLookup.asteroids[index] = entRef;
-        }
-        entLookup.miners = new Array();
-        for (index = 0; index < 10; index++) {
-            entLookup.entities.push(new Miner());
-            entLookup.entities[entLookup.entities.length - 1].activate(
-                (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
-				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
-                entLookup);
-            entLookup.miners.push(entLookup.entities[entLookup.entities.length - 1]);
-		}
-		entLookup.enemyBullets = new Array();
-		for (index = 0; index < 20; index++) {
-			entLookup.entities.push(new EnemyBullet());
-			entLookup.enemyBullets[index] = entLookup.entities[entLookup.entities.length - 1];
-		}
-		entLookup.shooters = new Array();
-		entLookup.entities.push(new Shooter());
-		entLookup.entities[entLookup.entities.length - 1].activate(450, 450);
-		entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
-		entLookup.crystals = new Array();
-		for (index = 0; index < 30; index++) {
-			entLookup.entities.push(new Crystal());
-			entLookup.crystals[index] = entLookup.entities[entLookup.entities.length - 1];
-		}
-		entLookup.playerBullets = new Array();
-		for (index = 0; index < 20; index++) {
-			entLookup.entities.push(new PlayerBullet());
-			entLookup.playerBullets[index] = entLookup.entities[entLookup.entities.length - 1];
-		}
-		requestAnimationFrame(mainLoop); // Begin loop
 		function mainLoop(timeStamp) {
 			var entIndex;
 			var curEnt;
@@ -186,6 +130,62 @@
 			}
 			requestAnimationFrame(mainLoop);
 		};
+
+        document.onkeydown = keyDownHandler;
+		document.onkeyup = keyUpHandler;
+        entLookup.bossRef = new Boss();
+        entLookup.entities.push(entLookup.bossRef);
+        for (index = 0; index < 8; index++) {
+            entLookup.entities.push(new bossPiece(0, 0, index));
+            entLookup.bossPieces[entLookup.bossPieces.length] = entLookup.entities[entLookup.entities.length - 1];
+        }
+        entLookup.playerRef = new Player();
+        entLookup.entities.push(entLookup.playerRef);
+        screenX = entLookup.playerRef.x;
+        screenY = entLookup.playerRef.y;
+        CTX.lineWidth = 1;
+        entLookup.asteroids = new Array(50);
+        for (index = 0; index < 50; index++) {
+            entLookup.entities.push(new Asteroid(
+				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
+				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
+            entRef = entLookup.entities[index + 10];
+			// move out of the way if on top of the player
+			if (distance(entRef.x, entRef.y, entLookup.playerRef.x, entLookup.playerRef.y) < 100) {
+				entRef.x += entRef.collRadius;
+			}
+			// register each asteroid
+			entLookup.asteroids[index] = entRef;
+        }
+        entLookup.miners = new Array();
+        for (index = 0; index < 10; index++) {
+            entLookup.entities.push(new Miner());
+            entLookup.entities[entLookup.entities.length - 1].activate(
+                (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
+				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
+                entLookup);
+            entLookup.miners.push(entLookup.entities[entLookup.entities.length - 1]);
+		}
+		entLookup.enemyBullets = new Array();
+		for (index = 0; index < 20; index++) {
+			entLookup.entities.push(new EnemyBullet());
+			entLookup.enemyBullets[index] = entLookup.entities[entLookup.entities.length - 1];
+		}
+		entLookup.shooters = new Array();
+		entLookup.entities.push(new Shooter());
+		entLookup.entities[entLookup.entities.length - 1].activate(450, 450);
+		entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
+		entLookup.crystals = new Array();
+		for (index = 0; index < 30; index++) {
+			entLookup.entities.push(new Crystal());
+			entLookup.crystals[index] = entLookup.entities[entLookup.entities.length - 1];
+		}
+		entLookup.playerBullets = new Array();
+		for (index = 0; index < 20; index++) {
+			entLookup.entities.push(new PlayerBullet());
+			entLookup.playerBullets[index] = entLookup.entities[entLookup.entities.length - 1];
+		}
+		requestAnimationFrame(mainLoop); // Begin loop
     };
     function distance(x0, y0, x1, y1) {
         return Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
@@ -584,6 +584,7 @@
 	function Miner() {
 		this.collLines = new Array(6);
 		this.active = true;
+		this.throttle = true;
 	};
     Miner.prototype = Object.create(Entity.prototype);
 	Miner.prototype.blipColor = "#FF0000";
@@ -593,9 +594,11 @@
 	Miner.prototype.target = null;
 	Miner.prototype.angleToTarget = 0;
 	Miner.prototype.turnSpeed = .007;
-	Miner.prototype.bumpCooldown = 500;
+	Miner.prototype.bumpCooldown = 200;
 	Miner.prototype.lastBump = 0;
 	Miner.prototype.hasCrystal = false;
+	Miner.prototype.avoiding = false;
+	Miner.prototype.turnSign = 1;
 	Miner.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
@@ -615,8 +618,15 @@
 		// movement
 		this.angle = wrapAngle(this.angle);
 		angleToTarget = getAngleTo(this, this.target);
-		// find the shortest arc and turn towards the target
-		if (Math.abs(this.angle - angleToTarget) > Math.PI) {
+		if (performance.now() - this.lastBump <= this.bumpCooldown) {
+			// turn to fly around asteroids
+			if (!this.avoiding) {
+				this.avoiding = true;
+				this.turnSign *= -1;
+			}
+			this.angle += this.turnSign * this.turnSpeed * delta;
+		} else if (Math.abs(this.angle - angleToTarget) > Math.PI) {
+			// find the shortest arc and turn towards the target
 			if (this.angle > angleToTarget) {
 				this.angle += this.turnSpeed * delta;
 			} else {
@@ -629,14 +639,10 @@
 				this.angle += this.turnSpeed * delta;
 			}
 		}
-		// wait for a clear path after hitting asteroid
-		if (!this.throttle && performance.now() - this.lastBump >= this.bumpCooldown) {
-			this.throttle = true;
-		}
 		if (this.moveSelf(delta, elu) instanceof Asteroid) {
 			this.lastBump = performance.now();
-			this.throttle = false;
 		}
+		fieldWrap(this, elu.playerRef);
 	};
 	Miner.prototype.activate = function (x, y, elu) {
 		this.x = x;
@@ -646,7 +652,7 @@
 	};
 	Miner.prototype.kill = function (elu) {
 		if (this.hasCrystal) {
-			elu.crystals[elu.crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI);
+			elu.crystals[elu.crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI, elu);
 			elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
 		}
 		this.hasCrystal = false;
