@@ -264,15 +264,17 @@
 		var other;
 		var ret;
 		
-		// start at 9 because the boss occupies 0-7 and player occupies 8
-		for (entIndex = 9; entIndex < elu.entities.length; entIndex++) {
-			other = elu.entities[entIndex];
-			if (!other.active || other == subject) {
-				continue;
-			}
-			ret = collidingWith(subject, other);
-			if (ret) {
-				return ret;
+		if (subject.collLines.length > 0) {
+			// start at 9 because the boss occupies 0-7 and player occupies 8
+			for (entIndex = 9; entIndex < elu.entities.length; entIndex++) {
+				other = elu.entities[entIndex];
+				if (!other.active || other == subject) {
+					continue;
+				}
+				ret = collidingWith(subject, other);
+				if (ret) {
+					return ret;
+				}
 			}
 		}
 		
@@ -411,38 +413,37 @@
             }
             this.x += this.xVel * delta;
             this.y += this.yVel * delta;
-            other = checkCollision(this, elu);
-            if (other) {
-                this.xVel = -this.xVel;
-                this.yVel = -this.yVel;
-                if (other) { // something bumped me
-                    if ((this.xVel > 0 && this.xVel < other.xVel) ||
-                        (this.xVel < 0 && -1 * this.xVel < other.xVel) ||
-                        (this.xVel < 0 && this.xVel > other.xVel) ||
-                        (this.xVel > 0 && -1 * this.xVel > other.xVel) ||
-                        this.xVel == 0) {
-                        this.xVel = other.xVel * 2;
-                    }
-                    if ((this.yVel > 0 && this.yVel < other.yVel) ||
-                        (this.yVel < 0 && -1 * this.yVel < other.yVel) ||
-                        (this.yVel < 0 && this.yVel > other.yVel) ||
-                        (this.yVel > 0 && -1 * this.yVel > other.yVel) ||
-                        this.yVel == 0) {
-                        this.yVel = other.yVel * 2;
-                    }				
-                }
-                // bounce away cleanly
-                do {
-                    angleToOther = getAngleTo(other, this);
-                    this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
-                    this.y -= Math.abs(this.yVel) * Math.sin(angleToOther + Math.PI / 2) * delta;
-                } while (collidingWith(this, other));
-                
-                return other;
-            }
+			other = checkCollision(this, elu);
+			if (other) {
+				this.xVel = -this.xVel;
+				this.yVel = -this.yVel;
+				if ((this.xVel > 0 && this.xVel < other.xVel) ||
+					(this.xVel < 0 && -1 * this.xVel < other.xVel) ||
+					(this.xVel < 0 && this.xVel > other.xVel) ||
+					(this.xVel > 0 && -1 * this.xVel > other.xVel) ||
+					this.xVel == 0) {
+					this.xVel = other.xVel * 2;
+				}
+				if ((this.yVel > 0 && this.yVel < other.yVel) ||
+					(this.yVel < 0 && -1 * this.yVel < other.yVel) ||
+					(this.yVel < 0 && this.yVel > other.yVel) ||
+					(this.yVel > 0 && -1 * this.yVel > other.yVel) ||
+					this.yVel == 0) {
+					this.yVel = other.yVel * 2;
+				}
+				// bounce away cleanly
+				do {
+					angleToOther = getAngleTo(other, this);
+					this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
+					this.y -= Math.abs(this.yVel) * Math.sin(angleToOther + Math.PI / 2) * delta;
+				} while (collidingWith(this, other));
+				
+				return other;
+			}
             
             return null;
-        }
+        },
+		updateCollLines: function () {}
 	};
     function Player() {};
     Player.prototype = Object.create(Entity.prototype);
@@ -908,6 +909,7 @@
 				}
 			}
 		}
+		fieldWrap(this, elu.playerRef);
 	};
 	Boss.prototype.isComplete = function () {
 		return (this.activePieces == 8);
@@ -1004,7 +1006,9 @@
 	bossPiece.prototype.accel = 0;
 	bossPiece.prototype.maxVel = 0;
 	bossPiece.prototype.collRadius = BOSS_RADIUS;
-	bossPiece.prototype.updateState = function () {
+	bossPiece.prototype.updateState = function (delta, elu) {
+		this.x = elu.bossRef.x;
+		this.y = elu.bossRef.y;
 	};
 	bossPiece.prototype.draw = function () {
         drawPolygon(this.x, this.y, this.collLines, "#444444");
