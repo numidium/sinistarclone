@@ -599,6 +599,10 @@
 	Miner.prototype.hasCrystal = false;
 	Miner.prototype.avoiding = false;
 	Miner.prototype.turnSign = 1;
+	Miner.prototype.nearTarget = false;
+	Miner.prototype.lastStop = 0;
+	Miner.prototype.stopLength = 500;
+	Miner.prototype.nearDistance = 100;
 	Miner.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
@@ -609,6 +613,7 @@
 		// update target
 		if (this.hasCrystal && this.target != elu.bossRef && !elu.bossRef.isComplete()) {
 			this.target = elu.bossRef;
+			this.nearTarget = false;
 		} else if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < minTargetDist) {
 			this.target = getRandomIndex(elu.asteroids);
 		}
@@ -625,8 +630,12 @@
 				this.turnSign *= -1;
 			}
 			this.angle += this.turnSign * this.turnSpeed * delta;
-		} else if (Math.abs(this.angle - angleToTarget) > Math.PI) {
+		}
+		else if (Math.abs(this.angle - angleToTarget) > Math.PI) {
 			// find the shortest arc and turn towards the target
+			if (this.avoiding) {
+				this.avoiding = false;
+			}
 			if (this.angle > angleToTarget) {
 				this.angle += this.turnSpeed * delta;
 			} else {
@@ -638,6 +647,16 @@
 			} else {
 				this.angle += this.turnSpeed * delta;
 			}
+		}
+		// stop before going towards a small target
+		if ((this.target instanceof Crystal || this.target instanceof Boss) &&
+			!this.nearTarget &&
+			distance(this.x, this.y, this.target.x, this.target.y) < this.nearDistance) {
+			this.nearTarget = true;
+			this.lastStop = performance.now();
+			this.throttle = false;
+		} else if (this.nearTarget && performance.now() - this.lastStop >= this.stopLength) {
+			this.throttle = true;
 		}
 		if (this.moveSelf(delta, elu) instanceof Asteroid) {
 			this.lastBump = performance.now();
@@ -656,6 +675,7 @@
 			elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
 		}
 		this.hasCrystal = false;
+		this.nearTarget = false;
 		this.target = getRandomIndex(elu.asteroids);
 		kill(this);
 	};
