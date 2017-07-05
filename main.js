@@ -630,22 +630,24 @@
 				this.turnSign *= -1;
 			}
 			this.angle += this.turnSign * this.turnSpeed * delta;
-		}
-		else if (Math.abs(this.angle - angleToTarget) > Math.PI) {
-			// find the shortest arc and turn towards the target
+		} else {
+			 if (Math.abs(this.angle - angleToTarget) > Math.PI) {
+				// find the shortest arc and turn towards the target
+				if (this.angle > angleToTarget) {
+					this.angle += this.turnSpeed * delta;
+				} else {
+					this.angle -= this.turnSpeed * delta;
+				}
+			} else {
+				if (this.angle > angleToTarget) {
+					this.angle -= this.turnSpeed * delta;
+				} else {
+					this.angle += this.turnSpeed * delta;
+				}
+			}
+			// no longer trying to avoid an obstacle
 			if (this.avoiding) {
 				this.avoiding = false;
-			}
-			if (this.angle > angleToTarget) {
-				this.angle += this.turnSpeed * delta;
-			} else {
-				this.angle -= this.turnSpeed * delta;
-			}
-		} else {
-			if (this.angle > angleToTarget) {
-				this.angle -= this.turnSpeed * delta;
-			} else {
-				this.angle += this.turnSpeed * delta;
 			}
 		}
 		// stop before going towards a small target
@@ -677,6 +679,7 @@
 		this.hasCrystal = false;
 		this.nearTarget = false;
 		this.target = getRandomIndex(elu.asteroids);
+		this.throttle = true;
 		kill(this);
 	};
 	Miner.prototype.draw = function () {
