@@ -443,7 +443,27 @@
             
             return null;
         },
-		updateCollLines: function () {}
+		updateCollLines: function () {},
+		turnToTarget: function (delta) {
+			var angleToTarget;
+			
+			this.angle = wrapAngle(this.angle);
+			angleToTarget = getAngleTo(this, this.target);
+			// find the shortest arc and turn towards the target
+			if (Math.abs(this.angle - angleToTarget) > Math.PI) {
+				if (this.angle > angleToTarget) {
+					this.angle += this.turnSpeed * delta;
+				} else {
+					this.angle -= this.turnSpeed * delta;
+				}
+			} else {
+				if (this.angle > angleToTarget) {
+					this.angle -= this.turnSpeed * delta;
+				} else {
+					this.angle += this.turnSpeed * delta;
+				}
+			}
+		}
 	};
     function Player() {};
     Player.prototype = Object.create(Entity.prototype);
@@ -727,27 +747,13 @@
 		}
 		// movement
 		if (this.target != null) {
-			this.angle = wrapAngle(this.angle);
-			angleToTarget = getAngleTo(this, this.target);
-			// find the shortest arc and turn towards the target
-			if (Math.abs(this.angle - angleToTarget) > Math.PI) {
-				if (this.angle > angleToTarget) {
-					this.angle += this.turnSpeed * delta;
-				} else {
-					this.angle -= this.turnSpeed * delta;
-				}
-			} else {
-				if (this.angle > angleToTarget) {
-					this.angle -= this.turnSpeed * delta;
-				} else {
-					this.angle += this.turnSpeed * delta;
-				}
-			}
+			this.turnToTarget(delta);
 			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 200);
 			this.moveSelf(delta, elu);
 			// shoot
 			if (distance(this.x, this.y, this.target.x, this.target.y) < 250 &&
 					performance.now() - this.lastShotTime >= this.coolDown) {
+				angleToTarget = getAngleTo(this, this.target);						
 				elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
 				elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
 				this.lastShotTime = performance.now();
@@ -915,7 +921,7 @@
 	Boss.prototype.blipColor = "#FFFF00";
 	Boss.prototype.accel = .0007;
 	Boss.prototype.angleDelta = 0;
-	Boss.prototype.maxVel = .3;
+	Boss.prototype.maxVel = .4;
 	Boss.prototype.collRadius = BOSS_RADIUS;
 	Boss.prototype.target = null;
 	Boss.prototype.angleToTarget = 0;
@@ -935,8 +941,15 @@
 					elu.bossPieces[this.activePieces - 1].active = true;
 					miner.hasCrystal = false;
 					miner.kill(elu);
+					if (this.isComplete()) {
+						this.target = elu.playerRef;
+						this.throttle = true;
+					}
 				}
 			}
+		} else {
+			this.turnToTarget(delta);
+			this.moveSelf(delta, elu);
 		}
 		fieldWrap(this, elu.playerRef);
 	};
