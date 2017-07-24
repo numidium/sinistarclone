@@ -99,7 +99,7 @@
 				}
 			}
 			// Draw HUD
-			CTX.fillStyle = "#000090";
+			CTX.fillStyle = "#404040";
 			CTX.fillRect(0, 0, CANVAS.width, HUD_HEIGHT);
 			CTX.fillStyle = "#000040";
 			CTX.fillRect(mmLeft, 0, 80, 80);
@@ -128,6 +128,10 @@
 				CTX.fillStyle = curEnt.blipColor;
 				CTX.fillRect(mmX, mmY, 2, 2);
 			}
+			// Draw bomb count
+			for (entIndex = 0; entIndex < entLookup.playerRef.bombs; entIndex++) {
+				drawCircle(20 + entIndex * 10 - (CANVAS.width / 2), -(CANVAS.height / 2), Crystal.prototype.collRadius, "#5555FF");
+			}
 			requestAnimationFrame(mainLoop);
 		};
 
@@ -136,7 +140,7 @@
         entLookup.bossRef = new Boss();
         entLookup.entities.push(entLookup.bossRef);
         for (index = 0; index < 8; index++) {
-            entLookup.entities.push(new bossPiece(0, 0, index));
+            entLookup.entities.push(new bossPiece(index));
             entLookup.bossPieces[entLookup.bossPieces.length] = entLookup.entities[entLookup.entities.length - 1];
         }
         entLookup.playerRef = new Player();
@@ -172,9 +176,11 @@
 			entLookup.enemyBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
 		entLookup.shooters = new Array();
-		entLookup.entities.push(new Shooter());
-		entLookup.entities[entLookup.entities.length - 1].activate(450, 450);
-		entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
+		for (index = 0; index < 2; index++) {
+			entLookup.entities.push(new Shooter());
+			entLookup.entities[entLookup.entities.length - 1].activate(entLookup);
+			entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
+		}
 		entLookup.crystals = new Array();
 		for (index = 0; index < 30; index++) {
 			entLookup.entities.push(new Crystal());
@@ -316,6 +322,24 @@
 		} else if (ent.y - playerRef.y < -MAX_DISTANCE) {
 			ent.y = playerRef.y + MAX_DISTANCE - 2;
 		}
+	};
+	function translateToOrigin(ent) {
+		if (ent.x > 0) {
+			ent.x = -(MAX_DISTANCE) + (ent.x % (MAX_DISTANCE * 2));
+		} else {
+			ent.x = MAX_DISTANCE + (ent.x % (MAX_DISTANCE * 2));
+		}
+		if (ent.y > 0) {
+			ent.y = -(MAX_DISTANCE) + (ent.y % (MAX_DISTANCE * 2));
+		} else {
+			ent.y = (MAX_DISTANCE) + (ent.y % (MAX_DISTANCE * 2));
+		}
+	};
+	function placeAwayFrom(x, y, ent) {
+		var theta = Math.random() * (2 * Math.PI);
+		
+		ent.x = -MAX_DISTANCE + Math.cos(theta) * MAX_DISTANCE * 2;
+		ent.y = -MAX_DISTANCE + Math.sin(-theta) * MAX_DISTANCE * 2;
 	};
 	function updateTriangle(vectors, angle, radius) {
 		vectors[0] = Math.cos(Math.PI / 2 + angle) * radius;
@@ -478,6 +502,11 @@
 	Player.prototype.shooting = false;
 	Player.prototype.lastShotTime = 0;
 	Player.prototype.coolDown = 250;
+	Player.prototype.lastDeath = 0;
+	Player.prototype.respawnDelay = 4000;
+	Player.prototype.lives = 2;
+	Player.prototype.bombs = 0;
+	Player.prototype.MAX_BOMBS = 10;
 	Player.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
@@ -503,6 +532,32 @@
 			elu.playerBullets[elu.playerBulletInd].activate(this.x, this.y, this.angle + Math.PI / 2);
 			elu.playerBulletInd = (elu.playerBulletInd + 1) % elu.playerBullets.length;
 			this.lastShotTime = performance.now();
+		}
+	};
+	Player.prototype.activate = function(elu) {
+		var entInd;
+		
+		this.x = 0;
+		this.y = 0;
+		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
+			translateToOrigin(elu.asteroids[entInd]);
+		}
+		for (entInd = 0; entInd < elu.shooters.length; entInd++) {
+			placeAwayFrom(this.x, this.y, elu.shooters[entInd]);
+		}
+		for (entInd = 0; entInd < elu.miners.length; entInd++) {
+			placeAwayFrom(this.x, this.y, elu.miners[entInd]);
+		}
+		this.active = true;
+	};
+	Player.prototype.kill = function(elu) {
+		this.active = false;
+		this.lives--;
+		this.lastDeath = performance.now();
+	};
+	Player.prototype.addBomb = function() {
+		if (this.bombs < this.MAX_BOMBS) {
+			this.bombs++;
 		}
 	};
 	Player.prototype.draw = function() {
@@ -732,26 +787,22 @@
 	Shooter.prototype.turnSpeed = .002;
 	Shooter.prototype.lastShotTime = 0;
 	Shooter.prototype.coolDown = 1000;
-	Shooter.prototype.maxHealth = 3;
-	Shooter.prototype.health = 0;
 	Shooter.prototype.updateCollLines = function () {
 		// doesn't rotate
 	};
 	Shooter.prototype.updateState = function (delta, elu) {
 		var angleToTarget = 0;
+		var shooterInd;
+		var chasingCount = 0;
 		
-		if (this.health < 1) {
-			kill(this);
-			this.target = null;
-			this.health = this.maxHealth;
-		}
 		// movement
 		if (this.target != null) {
 			this.turnToTarget(delta);
 			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 200);
 			this.moveSelf(delta, elu);
 			// shoot
-			if (distance(this.x, this.y, this.target.x, this.target.y) < 250 &&
+			if (elu.playerRef.active &&
+					distance(this.x, this.y, this.target.x, this.target.y) < 250 &&
 					performance.now() - this.lastShotTime >= this.coolDown) {
 				angleToTarget = getAngleTo(this, this.target);						
 				elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
@@ -760,16 +811,25 @@
 			}
 		} else {
 			if (distance(this.x, this.y, elu.playerRef.x, elu.playerRef.y) < 800) {
-				this.target = elu.playerRef;
+				for (shooterInd = 0; shooterInd < elu.shooters.length; shooterInd++) {
+					if (elu.shooters[shooterInd].target != null) {
+						chasingCount++;
+					}
+				}
+				if (chasingCount < elu.bossRef.maxChasing) {
+					this.target = elu.playerRef;
+				}
 			}
 		}
 		fieldWrap(this, elu.playerRef);
 	};
-	Shooter.prototype.activate = function (x, y) {
-		this.x = x;
-		this.y = y;
+	Shooter.prototype.activate = function (elu) {
+		placeAwayFrom(elu.playerRef.x, elu.playerRef.y, this);
 		this.active = true;
-		this.health = this.maxHealth;
+	};
+	Shooter.prototype.kill = function (elu) {
+		this.target = null;
+		kill(this);
 	};
 	Shooter.prototype.draw = function () {
         drawPolygon(this.x, this.y, this.collLines, "#AA00AA");
@@ -807,8 +867,9 @@
 				return;
 			}
 		}
-		if (circleCollidingWith(this, elu.playerRef)) {
+		if (circleCollidingWith(this, elu.playerRef) && elu.playerRef.active) {
 			this.active = false;
+			elu.playerRef.kill(elu);
 		}
 	};
 	EnemyBullet.prototype.draw = function () {
@@ -856,7 +917,7 @@
 		}
 		for (entInd = 0; entInd < elu.shooters.length; entInd++) {
 			if (circleCollidingWith(this, elu.shooters[entInd])) {
-				elu.shooters[entInd].health -= 1;
+				elu.shooters[entInd].kill(elu);
 				this.active = false;
 				return;
 			}
@@ -910,11 +971,17 @@
 				break;
 			}
 		}
+		other = circleCollidingWith(this, elu.playerRef);
+		if (other) {
+			other.addBomb();
+			this.active = false;
+		}
 	};
 	Crystal.prototype.draw = function () {
 		drawCircle(this.x - screenX, this.y - screenY, this.collRadius, "#5555FF");
 	};
 	function Boss() {
+		placeAwayFrom(0, 0, this);
 		this.active = true;
 	};
 	Boss.prototype = Object.create(Entity.prototype);
@@ -927,6 +994,7 @@
 	Boss.prototype.angleToTarget = 0;
 	Boss.prototype.turnSpeed = .002;
 	Boss.prototype.activePieces = 0;
+	Boss.prototype.maxChasing = 1;
 	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
 		var miner;
@@ -952,6 +1020,12 @@
 			this.moveSelf(delta, elu);
 		}
 		fieldWrap(this, elu.playerRef);
+		// resurrect the player
+		if (!elu.playerRef.active) {
+			if (performance.now() - elu.playerRef.lastDeath >= elu.playerRef.respawnDelay) {
+				elu.playerRef.activate(elu);
+			}
+		}
 	};
 	Boss.prototype.isComplete = function () {
 		return (this.activePieces == 8);
@@ -971,9 +1045,7 @@
 		CTX.fillStyle = "#660000";
 		CTX.fill();			
 	};
-	function bossPiece(x, y, pieceNumber) {
-		this.x = x;
-		this.y = y;
+	function bossPiece(pieceNumber) {
 		switch (pieceNumber) {
 			case 0:
 				this.collLines = [0,
