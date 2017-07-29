@@ -37,6 +37,8 @@
             enemyBullets: [],
             enemyBulletInd: 0
         };
+		var lifeSymbolLines = new Array(6);
+		updateTriangle(lifeSymbolLines, 0, 7);
         function keyDownHandler(e) {
             switch(e.keyCode) {
                 case 38: // up
@@ -131,6 +133,17 @@
 			// Draw bomb count
 			for (entIndex = 0; entIndex < entLookup.playerRef.bombs; entIndex++) {
 				drawCircle(20 + entIndex * 10 - (CANVAS.width / 2), -(CANVAS.height / 2), Crystal.prototype.collRadius, "#5555FF");
+			}
+			// Draw lives
+			for (entIndex = 0; entIndex < entLookup.playerRef.lives; entIndex++) {
+				CTX.beginPath();
+				CTX.moveTo(20 + (entIndex * 10) + lifeSymbolLines[0], 25 + lifeSymbolLines[1]);
+				for (index = 2; index < lifeSymbolLines.length - 1; index += 2) {
+					CTX.lineTo(20 + (entIndex * 10) + lifeSymbolLines[index], 25 + lifeSymbolLines[index + 1]);
+				}
+				CTX.lineTo(20 + (entIndex * 10) + lifeSymbolLines[0], 25 + lifeSymbolLines[1]);
+				CTX.fillStyle = "#00FF00";
+				CTX.fill();
 			}
 			requestAnimationFrame(mainLoop);
 		};
@@ -507,6 +520,7 @@
 	Player.prototype.lives = 2;
 	Player.prototype.bombs = 0;
 	Player.prototype.MAX_BOMBS = 10;
+	Player.prototype.MAX_LIVES = 10;
 	Player.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
@@ -534,7 +548,7 @@
 			this.lastShotTime = performance.now();
 		}
 	};
-	Player.prototype.activate = function(elu) {
+	Player.prototype.activate = function (elu) {
 		var entInd;
 		
 		this.x = 0;
@@ -561,19 +575,7 @@
 		}
 	};
 	Player.prototype.draw = function() {
-		var xCenter = CANVAS.width / 2 + (this.x - screenX);
-		var yCenter = CANVAS.height / 2 + (this.y - screenY) + (HUD_HEIGHT / 2);
-		var index;
-		
-		CTX.beginPath();
-		CTX.moveTo(xCenter + this.collLines[0],
-			yCenter + this.collLines[1]);
-		for (index = 2; index < this.collLines.length; index += 2) {
-			CTX.lineTo(xCenter + this.collLines[index],
-				yCenter + this.collLines[index + 1]);
-		}
-		CTX.fillStyle = "#00FF00";
-		CTX.fill();
+		drawPolygon(this.x, this.y, this.collLines, "#00FF00");
 	};
     function Asteroid(x, y) {
         var pointInd;
