@@ -35,7 +35,9 @@
             playerBullets: [],
             playerBulletInd: 0,
             enemyBullets: [],
-            enemyBulletInd: 0
+            enemyBulletInd: 0,
+			bombs: [],
+			bombInd: 0
         };
 		var lifeSymbolLines = new Array(6);
 		updateTriangle(lifeSymbolLines, 0, 7);
@@ -52,6 +54,10 @@
                     break;
                 case 32: // space
                     entLookup.playerRef.shooting = true;
+					break;
+				case 90: // Z
+					entLookup.playerRef.shootBomb(entLookup);
+					break;
                 default:
                     break;
             }
@@ -153,9 +159,14 @@
         entLookup.bossRef = new Boss();
         entLookup.entities.push(entLookup.bossRef);
         for (index = 0; index < 8; index++) {
-            entLookup.entities.push(new bossPiece(index));
+            entLookup.entities.push(new BossPiece(index));
             entLookup.bossPieces[entLookup.bossPieces.length] = entLookup.entities[entLookup.entities.length - 1];
         }
+		entLookup.bombs = new Array();
+		for (index = 0; index < 10; index++) {
+			entLookup.entities.push(new Bomb());
+			entLookup.bombs[index] = entLookup.entities[entLookup.entities.length - 1];
+		}
         entLookup.playerRef = new Player();
         entLookup.entities.push(entLookup.playerRef);
         screenX = entLookup.playerRef.x;
@@ -166,7 +177,7 @@
             entLookup.entities.push(new Asteroid(
 				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200,
 				(Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 100) + 200));
-            entRef = entLookup.entities[index + 10];
+            entRef = entLookup.entities[entLookup.entities.length - 1];
 			// move out of the way if on top of the player
 			if (distance(entRef.x, entRef.y, entLookup.playerRef.x, entLookup.playerRef.y) < 100) {
 				entRef.x += entRef.collRadius;
@@ -284,8 +295,9 @@
 		var ret;
 		
 		if (subject.collLines.length > 0) {
-			// start at 9 because the boss occupies 0-7 and player occupies 8
-			for (entIndex = 9; entIndex < elu.entities.length; entIndex++) {
+			// Start at 20 because the boss occupies 0-8, bombs occupy 9-18,
+			// and the player occupies 19.
+			for (entIndex = 20; entIndex < elu.entities.length; entIndex++) {
 				other = elu.entities[entIndex];
 				if (!other.active || other == subject) {
 					continue;
@@ -564,7 +576,7 @@
 		}
 		this.active = true;
 	};
-	Player.prototype.kill = function(elu) {
+	Player.prototype.kill = function (elu) {
 		this.active = false;
 		this.lives--;
 		this.lastDeath = performance.now();
@@ -572,6 +584,13 @@
 	Player.prototype.addBomb = function() {
 		if (this.bombs < this.MAX_BOMBS) {
 			this.bombs++;
+		}
+	};
+	Player.prototype.shootBomb = function (elu) {
+		if (this.bombs > 0) {
+			elu.bombs[elu.bombInd].activate(elu, this.x, this.y);
+			elu.bombInd = (elu.bombInd + 1) % elu.bombs.length;
+			this.bombs--;
 		}
 	};
 	Player.prototype.draw = function() {
@@ -643,6 +662,9 @@
 			this.heat = 0;
 			kill(this);
 		}
+	};
+	Asteroid.prototype.kill = function () {
+		kill(this);
 	};
 	Asteroid.prototype.draw = function () {
 		var rChannel;
@@ -928,8 +950,87 @@
 	PlayerBullet.prototype.draw = function () {
 		drawCircle(this.x - screenX, this.y - screenY, this.collRadius, "#CCCCCC");
 	};
-    function Crystal() {
-    };
+	function Bomb() {
+		this.collLines = new Array(6);
+	};
+	Bomb.prototype = Object.create(Entity.prototype);
+	Bomb.prototype.collRadius = 5;
+	Bomb.prototype.blipColor = null;
+	Bomb.prototype.lifeSpan = 4000;
+	Bomb.prototype.maxVel = .3;
+	Bomb.prototype.birthTime = 0;
+	Bomb.prototype.accel = .0010;
+	Bomb.prototype.target = null;
+	Bomb.prototype.angleToTarget = 0;
+	Bomb.prototype.turnSpeed = .010;
+	Bomb.prototype.updateCollLines = function () {
+		updateTriangle(this.collLines, this.angle, this.collRadius);
+	};
+	Bomb.prototype.activate = function (elu, x, y) {
+		var pieceInd;
+		var nearestDist = MAX_DISTANCE;
+		var nearestPiece = null;
+		var dist;
+		
+		this.birthTime = performance.now();
+		for (pieceInd = 0; pieceInd < elu.bossPieces.length; pieceInd++) {
+			if (elu.bossPieces[pieceInd].active) {
+				dist = distance(this.x, this.y, elu.bossPieces[pieceInd].x, elu.bossPieces[pieceInd].y);
+				if (dist < nearestDist) {
+					nearestDist = dist;
+					nearestPiece = elu.bossPieces[pieceInd];
+				}
+			}
+		}
+		// if we can't find an active piece then just go in the boss's general direction
+		this.target = nearestPiece || elu.bossRef;
+		// immediately point at the target
+		this.angle = getAngleTo(this, this.target);
+		this.x = x;
+		this.y = y;
+		this.throttle = true;
+		this.active = true;
+	};
+	Bomb.prototype.updateState = function (delta, elu) {
+		var other;
+		var pieceInd;
+		
+		if (performance.now() - this.birthTime > this.lifeSpan) {
+			this.active = false;
+			return;
+		}
+		this.updateCollLines();
+		this.turnToTarget(delta);
+		this.xVelDelta = this.accel * Math.cos(this.angle + Math.PI / 2);
+		this.yVelDelta = this.accel * Math.sin(-(this.angle + Math.PI / 2));
+		this.xVel += this.xVelDelta * delta;
+		this.yVel += this.yVelDelta * delta;
+		if (this.xVel > this.maxVel) {
+			this.xVel = this.maxVel;
+		} else if (this.xVel < -this.maxVel) {
+			this.xVel = -this.maxVel;
+		}
+		if (this.yVel > this.maxVel) {
+			this.yVel = this.maxVel;
+		} else if (this.yVel < -this.maxVel) {
+			this.yVel = -this.maxVel;
+		}
+		this.x += this.xVel * delta;
+		this.y += this.yVel * delta;
+		other = checkCollision(this, elu);
+		if (other &&
+			other instanceof BossPiece ||
+			other instanceof Asteroid || 
+			other instanceof Miner || 
+			other instanceof Shooter) {
+				other.kill(elu);
+				this.active = false;
+		}
+	};
+	Bomb.prototype.draw = function () {
+		drawPolygon(this.x, this.y, this.collLines, "#55FFFF");
+	};
+    function Crystal() { };
     Crystal.prototype = Object.create(Entity.prototype);
 	Crystal.prototype.collRadius = 3;
 	Crystal.prototype.blipColor = "#BBBBFF";
@@ -1032,22 +1133,9 @@
 	Boss.prototype.isComplete = function () {
 		return (this.activePieces == 8);
 	};
-	Boss.prototype.draw = function () {
-		var index;
-		
-		CTX.beginPath();
-		CTX.moveTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-			CANVAS.height / 2 + (this.y + HUD_HEIGHT / 2 - screenY) + this.collLines[1]);
-		for (index = 0; index < this.collLines.length; index += 2) {
-			CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[index],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[index + 1]);
-		}
-		CTX.lineTo(CANVAS.width / 2 + (this.x - screenX) + this.collLines[0],
-				CANVAS.height / 2 + HUD_HEIGHT / 2 + (this.y - screenY) + this.collLines[1]);
-		CTX.fillStyle = "#660000";
-		CTX.fill();			
+	Boss.prototype.draw = function () {			
 	};
-	function bossPiece(pieceNumber) {
+	function BossPiece(pieceNumber) {
 		switch (pieceNumber) {
 			case 0:
 				this.collLines = [0,
@@ -1117,16 +1205,20 @@
 				break;
 		}
 	};
-	bossPiece.prototype = Object.create(Entity.prototype);
-	bossPiece.prototype.blipColor = null;
-	bossPiece.prototype.accel = 0;
-	bossPiece.prototype.maxVel = 0;
-	bossPiece.prototype.collRadius = BOSS_RADIUS;
-	bossPiece.prototype.updateState = function (delta, elu) {
+	BossPiece.prototype = Object.create(Entity.prototype);
+	BossPiece.prototype.blipColor = null;
+	BossPiece.prototype.accel = 0;
+	BossPiece.prototype.maxVel = 0;
+	BossPiece.prototype.collRadius = BOSS_RADIUS;
+	BossPiece.prototype.updateState = function (delta, elu) {
 		this.x = elu.bossRef.x;
 		this.y = elu.bossRef.y;
 	};
-	bossPiece.prototype.draw = function () {
+	BossPiece.prototype.kill = function (elu) {
+		elu.bossRef.activePieces--;
+		this.active = false;
+	};
+	BossPiece.prototype.draw = function () {
         drawPolygon(this.x, this.y, this.collLines, "#444444");
 	};
 	startGame();
