@@ -985,7 +985,7 @@
 		// if we can't find an active piece then just go in the boss's general direction
 		this.target = nearestPiece || elu.bossRef;
 		// immediately point at the target
-		this.angle = getAngleTo(this, this.target);
+		this.angle = getAngleTo(this, this.target) - Math.PI / 2;
 		this.x = x;
 		this.y = y;
 		this.throttle = true;
@@ -1019,12 +1019,19 @@
 		this.y += this.yVel * delta;
 		other = checkCollision(this, elu);
 		if (other &&
-			other instanceof BossPiece ||
 			other instanceof Asteroid || 
 			other instanceof Miner || 
 			other instanceof Shooter) {
 				other.kill(elu);
 				this.active = false;
+		}
+		for (pieceInd = 0; pieceInd < elu.bossPieces.length; pieceInd++) {
+			if (elu.bossPieces[pieceInd].active &&
+				collidingWith(this, elu.bossPieces[pieceInd])) {
+					elu.bossPieces[pieceInd].kill(elu);
+					this.active = false;
+					break;
+				}
 		}
 	};
 	Bomb.prototype.draw = function () {
@@ -1152,7 +1159,7 @@
 					Math.sin(-Math.PI / 4) * Boss.prototype.collRadius,
 					Math.cos(Math.PI / 2) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI / 2) * Boss.prototype.collRadius];
-					break;
+				break;
 			case 2:
 				this.collLines = [0,
 					0,
