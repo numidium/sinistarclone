@@ -537,7 +537,9 @@
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
 	Player.prototype.updateState = function (delta, elu) {
-		this.moveSelf(delta, elu);
+		if (!elu.bossRef.caught) {
+			this.moveSelf(delta, elu);
+		}
 		// make the screen track the player
 		screenBoundX = Math.abs((this.xVel / this.maxVel)) * MAX_SCREEN_BOUND_X;
 		screenBoundY = Math.abs((this.yVel / this.maxVel)) * MAX_SCREEN_BOUND_Y;
@@ -565,6 +567,9 @@
 		
 		this.x = 0;
 		this.y = 0;
+		this.angle = 0;
+		this.xVel = 0;
+		this.yVel = 0;
 		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
 			translateToOrigin(elu.asteroids[entInd]);
 		}
@@ -710,13 +715,13 @@
 		var minTargetDist = this.target instanceof Asteroid ? 200 : 5;
 		
 		// update target
-		if (this.hasCrystal && this.target != elu.bossRef && !elu.bossRef.isComplete()) {
+		if (this.hasCrystal && this.target != elu.bossRef && !elu.bossRef.alive) {
 			this.target = elu.bossRef;
 			this.nearTarget = false;
 		} else if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < minTargetDist) {
 			this.target = getRandomIndex(elu.asteroids);
 		}
-		if (this.target == elu.bossRef && elu.bossRef.isComplete()) {
+		if (this.target == elu.bossRef && elu.bossRef.alive) {
 			this.target = getRandomIndex(elu.asteroids);
 		}
 		// movement
@@ -1096,49 +1101,84 @@
 	};
 	Boss.prototype = Object.create(Entity.prototype);
 	Boss.prototype.blipColor = "#FFFF00";
-	Boss.prototype.accel = .0007;
+	Boss.prototype.accel = .0008;
 	Boss.prototype.angleDelta = 0;
 	Boss.prototype.maxVel = .4;
 	Boss.prototype.collRadius = BOSS_RADIUS;
 	Boss.prototype.target = null;
 	Boss.prototype.angleToTarget = 0;
-	Boss.prototype.turnSpeed = .002;
+	Boss.prototype.turnSpeed = .005;
 	Boss.prototype.activePieces = 0;
+	Boss.prototype.alive = false;
+	Boss.prototype.caught = false;
+	Boss.prototype.lastCaught = 0;
+	Boss.prototype.catchTime = 5000;
 	Boss.prototype.maxChasing = 1;
 	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
 		var miner;
+		var angleToMe;
 		
 		this.x = elu.bossRef.x;
 		this.y = elu.bossRef.y;
-		if (!this.isComplete()) {
+		if (!this.alive) {
 			for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
 				miner = elu.miners[minerInd];
 				if (distance(this.x, this.y, miner.x, miner.y) < 25 && miner.hasCrystal) {
 					this.activePieces++;
+					if (this.activePieces == 8) {
+						this.alive = true;
+					}
 					elu.bossPieces[this.activePieces - 1].active = true;
 					miner.hasCrystal = false;
 					miner.kill(elu);
-					if (this.isComplete()) {
+					if (this.alive) {
 						this.target = elu.playerRef;
 						this.throttle = true;
 					}
 				}
 			}
 		} else {
-			this.turnToTarget(delta);
-			this.moveSelf(delta, elu);
+			if (!this.caught) {
+				this.turnToTarget(delta);
+				this.moveSelf(delta, elu);
+				if (distance(this.x, this.y, this.target.x, this.target.y) < 100) {
+					this.caught = true;
+					this.lastCaught = performance.now();
+				}
+			} else if (this.target.active) {
+				if (performance.now() - this.lastCaught > this.catchTime &&
+					distance(this.x, this.y, this.target.x, this.target.y) < 30) {
+						this.target.kill();
+						return;
+				}
+				angleToMe = getAngleTo(this.target, this);
+				this.target.angle += .015 * delta;
+				this.target.updateCollLines();
+				this.target.xVelDelta = .006 * Math.cos(angleToMe + Math.PI / 2);
+                this.target.yVelDelta = .006 * Math.sin(-(angleToMe + Math.PI / 2));
+				this.target.xVel += this.target.xVelDelta;
+				this.target.yVel += this.target.yVelDelta;
+				if (this.target.xVel > this.target.maxVel) {
+					this.target.xVel = this.target.maxVel;
+				}
+				if (this.target.yVel > this.target.maxVel) {
+					this.target.yVel = this.target.maxVel;
+				}
+				this.target.x += this.target.xVel * delta;
+				this.target.y += this.target.yVel * delta;
+			}
 		}
 		fieldWrap(this, elu.playerRef);
 		// resurrect the player
 		if (!elu.playerRef.active) {
 			if (performance.now() - elu.playerRef.lastDeath >= elu.playerRef.respawnDelay) {
 				elu.playerRef.activate(elu);
+				if (this.caught) {
+					this.caught = false;
+				}
 			}
 		}
-	};
-	Boss.prototype.isComplete = function () {
-		return (this.activePieces == 8);
 	};
 	Boss.prototype.draw = function () {			
 	};
