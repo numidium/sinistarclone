@@ -202,7 +202,7 @@
 		entLookup.shooters = new Array();
 		for (index = 0; index < 2; index++) {
 			entLookup.entities.push(new Shooter());
-			entLookup.entities[entLookup.entities.length - 1].activate(entLookup);
+			//entLookup.entities[entLookup.entities.length - 1].activate(entLookup);
 			entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
 		}
 		entLookup.crystals = new Array();
@@ -579,6 +579,7 @@
 		for (entInd = 0; entInd < elu.miners.length; entInd++) {
 			placeAwayFrom(this.x, this.y, elu.miners[entInd]);
 		}
+		placeAwayFrom(this.x, this.y, elu.bossRef);
 		this.active = true;
 	};
 	Player.prototype.kill = function (elu) {
@@ -1107,17 +1108,18 @@
 	Boss.prototype.collRadius = BOSS_RADIUS;
 	Boss.prototype.target = null;
 	Boss.prototype.angleToTarget = 0;
-	Boss.prototype.turnSpeed = .005;
+	Boss.prototype.turnSpeed = .02;
 	Boss.prototype.activePieces = 0;
 	Boss.prototype.alive = false;
 	Boss.prototype.caught = false;
 	Boss.prototype.lastCaught = 0;
 	Boss.prototype.catchTime = 5000;
-	Boss.prototype.maxChasing = 1;
+	Boss.prototype.maxChasing = 0;
 	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
 		var miner;
 		var angleToMe;
+		var velCoeff;
 		
 		this.x = elu.bossRef.x;
 		this.y = elu.bossRef.y;
@@ -1153,17 +1155,24 @@
 						return;
 				}
 				angleToMe = getAngleTo(this.target, this);
-				this.target.angle += .015 * delta;
+				this.target.angle += .03 * delta;
 				this.target.updateCollLines();
 				this.target.xVelDelta = .006 * Math.cos(angleToMe + Math.PI / 2);
                 this.target.yVelDelta = .006 * Math.sin(-(angleToMe + Math.PI / 2));
 				this.target.xVel += this.target.xVelDelta;
 				this.target.yVel += this.target.yVelDelta;
-				if (this.target.xVel > this.target.maxVel) {
-					this.target.xVel = this.target.maxVel;
+				velCoeff = (this.catchTime - (performance.now() - this.lastCaught)) / this.catchTime;
+				if (this.target.xVel > velCoeff * this.target.maxVel) {
+					this.target.xVel = velCoeff * this.target.maxVel;
 				}
-				if (this.target.yVel > this.target.maxVel) {
-					this.target.yVel = this.target.maxVel;
+				if (this.target.xVel < velCoeff * -this.target.maxVel) {
+					this.target.xVel = velCoeff * -this.target.maxVel;
+				}
+				if (this.target.yVel > velCoeff * this.target.maxVel) {
+					this.target.yVel = velCoeff * this.target.maxVel;
+				}
+				if (this.target.yVel < velCoeff * -this.target.maxVel) {
+					this.target.yVel = velCoeff * -this.target.maxVel;
 				}
 				this.target.x += this.target.xVel * delta;
 				this.target.y += this.target.yVel * delta;
