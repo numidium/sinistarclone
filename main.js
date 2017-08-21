@@ -705,8 +705,6 @@
 	Miner.prototype.avoiding = false;
 	Miner.prototype.turnSign = 1;
 	Miner.prototype.nearTarget = false;
-	Miner.prototype.lastStop = 0;
-	Miner.prototype.stopLength = 500;
 	Miner.prototype.nearDistance = 100;
 	Miner.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
@@ -714,12 +712,13 @@
 	Miner.prototype.updateState = function (delta, elu) {
 		var angleToTarget = 0;
 		var minTargetDist = this.target instanceof Asteroid ? 200 : 5;
+		var distanceToTarget = distance(this.x, this.y, this.target.x, this.target.y);
 		
 		// update target
 		if (this.hasCrystal && this.target != elu.bossRef && !elu.bossRef.alive) {
 			this.target = elu.bossRef;
 			this.nearTarget = false;
-		} else if (!this.target.active || distance(this.x, this.y, this.target.x, this.target.y) < minTargetDist) {
+		} else if (!this.target.active || distanceToTarget < minTargetDist) {
 			this.target = getRandomIndex(elu.asteroids);
 		}
 		if (this.target == elu.bossRef && elu.bossRef.alive) {
@@ -755,18 +754,15 @@
 				this.avoiding = false;
 			}
 		}
-		// stop before going towards a small target
-		if ((this.target instanceof Crystal || this.target instanceof Boss) &&
-			!this.nearTarget &&
-			distance(this.x, this.y, this.target.x, this.target.y) < this.nearDistance) {
-			this.nearTarget = true;
-			this.lastStop = performance.now();
-			this.throttle = false;
-		} else if (this.nearTarget && performance.now() - this.lastStop >= this.stopLength) {
-			this.throttle = true;
-		}
 		if (this.moveSelf(delta, elu) instanceof Asteroid) {
 			this.lastBump = performance.now();
+		}
+		// accurately approach small targets
+		if ((this.target instanceof Crystal || this.target instanceof Boss) &&
+			!this.nearTarget && distanceToTarget < this.nearDistance) {
+			this.xVel = this.yVel = 0;
+			this.x += 2 * Math.cos(angleToTarget + Math.PI / 2);
+			this.y += 2 * Math.sin(-angleToTarget - Math.PI / 2);
 		}
 		fieldWrap(this, elu.playerRef);
 	};
@@ -1149,6 +1145,7 @@
 					this.lastCaught = performance.now();
 				}
 			} else if (this.target.active) {
+				// play the player death animation
 				if (performance.now() - this.lastCaught > this.catchTime &&
 					distance(this.x, this.y, this.target.x, this.target.y) < 30) {
 						this.target.kill();
