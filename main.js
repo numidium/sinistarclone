@@ -565,6 +565,7 @@
 	Player.prototype.activate = function (elu) {
 		var entInd;
 		
+		this.lives--;
 		this.x = 0;
 		this.y = 0;
 		this.angle = 0;
@@ -590,7 +591,6 @@
 		var shooterInd;
 		
 		this.active = false;
-		this.lives--;
 		this.lastDeath = performance.now();
 	};
 	Player.prototype.addBomb = function() {
@@ -820,6 +820,11 @@
 	Shooter.prototype.lastShotTime = 0;
 	Shooter.prototype.minThrottleDist = 200;
 	Shooter.prototype.coolDown = 1000;
+	Shooter.prototype.lockOnTime = 4000;
+	Shooter.prototype.lockOnDist = 400;
+	Shooter.prototype.foundTarget = false;
+	Shooter.prototype.foundTime = 0;
+	Shooter.prototype.shooting = false;
 	Shooter.prototype.updateCollLines = function () {
 		// doesn't rotate
 	};
@@ -831,7 +836,17 @@
 		this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < this.minThrottleDist);
 		this.moveSelf(delta, elu);
 		// shoot
-		if (elu.playerRef.active && performance.now() - this.lastShotTime > this.coolDown) {
+		if (!this.shooting) {
+			if (!this.foundTarget && distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
+				this.foundTarget = true;
+				this.foundTime = performance.now();
+			} else if (this.foundTarget && performance.now() - this.foundTime > this.lockOnTime) {
+				this.shooting = true;
+			}
+		}
+		if (elu.playerRef.active && this.shooting &&
+				performance.now() - this.lastShotTime > this.coolDown &&
+				distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
 			angleToTarget = getAngleTo(this, this.target);					
 			elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
 			elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
@@ -842,6 +857,8 @@
 	Shooter.prototype.activate = function (elu) {
 		placeAwayFrom(elu.playerRef.x, elu.playerRef.y, this);
 		this.target = elu.playerRef;
+		this.foundTarget = false;
+		this.shooting = false;
 		this.active = true;
 	};
 	Shooter.prototype.kill = function (elu) {
