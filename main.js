@@ -580,9 +580,15 @@
 			placeAwayFrom(this.x, this.y, elu.miners[entInd]);
 		}
 		placeAwayFrom(this.x, this.y, elu.bossRef);
+		for (shooterInd = 0; shooterInd < elu.shooters.length; shooterInd++) {
+			elu.shooters[shooterInd].kill(elu);
+		}
+		elu.bossRef.lastShooterSpawn = performance.now();
 		this.active = true;
 	};
 	Player.prototype.kill = function (elu) {
+		var shooterInd;
+		
 		this.active = false;
 		this.lives--;
 		this.lastDeath = performance.now();
@@ -812,50 +818,35 @@
 	Shooter.prototype.angleToTarget = 0;
 	Shooter.prototype.turnSpeed = .002;
 	Shooter.prototype.lastShotTime = 0;
+	Shooter.prototype.minThrottleDist = 200;
 	Shooter.prototype.coolDown = 1000;
 	Shooter.prototype.updateCollLines = function () {
 		// doesn't rotate
 	};
 	Shooter.prototype.updateState = function (delta, elu) {
 		var angleToTarget = 0;
-		var shooterInd;
-		var chasingCount = 0;
 		
 		// movement
-		if (this.target != null) {
-			this.turnToTarget(delta);
-			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < 200);
-			this.moveSelf(delta, elu);
-			// shoot
-			if (elu.playerRef.active &&
-					distance(this.x, this.y, this.target.x, this.target.y) < 250 &&
-					performance.now() - this.lastShotTime >= this.coolDown) {
-				angleToTarget = getAngleTo(this, this.target);						
-				elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
-				elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
-				this.lastShotTime = performance.now();
-			}
-		} else {
-			if (distance(this.x, this.y, elu.playerRef.x, elu.playerRef.y) < 800) {
-				for (shooterInd = 0; shooterInd < elu.shooters.length; shooterInd++) {
-					if (elu.shooters[shooterInd].target != null) {
-						chasingCount++;
-					}
-				}
-				if (chasingCount < elu.bossRef.maxChasing) {
-					this.target = elu.playerRef;
-				}
-			}
+		this.turnToTarget(delta);
+		this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < this.minThrottleDist);
+		this.moveSelf(delta, elu);
+		// shoot
+		if (elu.playerRef.active && performance.now() - this.lastShotTime > this.coolDown) {
+			angleToTarget = getAngleTo(this, this.target);					
+			elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
+			elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
+			this.lastShotTime = performance.now();
 		}
 		fieldWrap(this, elu.playerRef);
 	};
 	Shooter.prototype.activate = function (elu) {
 		placeAwayFrom(elu.playerRef.x, elu.playerRef.y, this);
+		this.target = elu.playerRef;
 		this.active = true;
 	};
 	Shooter.prototype.kill = function (elu) {
 		this.target = null;
-		kill(this);
+		this.active = false;
 	};
 	Shooter.prototype.draw = function () {
         drawPolygon(this.x, this.y, this.collLines, "#AA00AA");
@@ -1094,6 +1085,7 @@
 	};
 	function Boss() {
 		placeAwayFrom(0, 0, this);
+		this.lastShooterSpawn = performance.now();
 		this.active = true;
 	};
 	Boss.prototype = Object.create(Entity.prototype);
@@ -1111,11 +1103,14 @@
 	Boss.prototype.lastCaught = 0;
 	Boss.prototype.catchTime = 5000;
 	Boss.prototype.maxChasing = 0;
+	Boss.prototype.lastShooterSpawn = 0;
+	Boss.prototype.shooterSpawnInterval = 7000;
 	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
 		var miner;
 		var angleToMe;
 		var velCoeff;
+		var shooterInd;
 		
 		this.x = elu.bossRef.x;
 		this.y = elu.bossRef.y;
@@ -1176,6 +1171,16 @@
 			}
 		}
 		fieldWrap(this, elu.playerRef);
+		// spawn shooters
+		if (performance.now() - this.lastShooterSpawn > this.shooterSpawnInterval) {
+			for (shooterInd = 0; shooterInd < elu.shooters.length; shooterInd++) {
+				if (!elu.shooters[shooterInd].active) {
+					elu.shooters[shooterInd].activate(elu);
+					this.lastShooterSpawn = performance.now();
+					break;
+				}
+			}
+		}
 		// resurrect the player
 		if (!elu.playerRef.active) {
 			if (performance.now() - elu.playerRef.lastDeath >= elu.playerRef.respawnDelay) {
