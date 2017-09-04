@@ -56,7 +56,9 @@
                     entLookup.playerRef.shooting = true;
 					break;
 				case 90: // Z
-					entLookup.playerRef.shootBomb(entLookup);
+					if (!entLookup.bossRef.caught) {
+						entLookup.playerRef.shootBomb(entLookup);
+					}
 					break;
                 default:
                     break;
@@ -831,26 +833,28 @@
 	Shooter.prototype.updateState = function (delta, elu) {
 		var angleToTarget = 0;
 		
-		// movement
-		this.turnToTarget(delta);
-		this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < this.minThrottleDist);
-		this.moveSelf(delta, elu);
-		// shoot
-		if (!this.shooting) {
-			if (!this.foundTarget && distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
-				this.foundTarget = true;
-				this.foundTime = performance.now();
-			} else if (this.foundTarget && performance.now() - this.foundTime > this.lockOnTime) {
-				this.shooting = true;
+		if (!elu.bossRef.caught) {
+			// movement
+			this.turnToTarget(delta);
+			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < this.minThrottleDist);
+			this.moveSelf(delta, elu);
+			// shoot
+			if (!this.shooting) {
+				if (!this.foundTarget && distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
+					this.foundTarget = true;
+					this.foundTime = performance.now();
+				} else if (this.foundTarget && performance.now() - this.foundTime > this.lockOnTime) {
+					this.shooting = true;
+				}
 			}
-		}
-		if (elu.playerRef.active && this.shooting &&
-				performance.now() - this.lastShotTime > this.coolDown &&
-				distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
-			angleToTarget = getAngleTo(this, this.target);					
-			elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
-			elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
-			this.lastShotTime = performance.now();
+			if (elu.playerRef.active && this.shooting &&
+					performance.now() - this.lastShotTime > this.coolDown &&
+					distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
+				angleToTarget = getAngleTo(this, this.target);					
+				elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
+				elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
+				this.lastShotTime = performance.now();
+			}
 		}
 		fieldWrap(this, elu.playerRef);
 	};
@@ -950,7 +954,7 @@
 			}
 		}
 		for (entInd = 0; entInd < elu.shooters.length; entInd++) {
-			if (circleCollidingWith(this, elu.shooters[entInd])) {
+			if (elu.shooters[entInd].active && circleCollidingWith(this, elu.shooters[entInd])) {
 				elu.shooters[entInd].kill(elu);
 				this.active = false;
 				return;
@@ -1039,6 +1043,7 @@
 			if (elu.bossPieces[pieceInd].active &&
 				collidingWith(this, elu.bossPieces[pieceInd])) {
 					elu.bossPieces[pieceInd].kill(elu);
+					elu.bossRef.hurt();
 					this.active = false;
 					break;
 				}
@@ -1111,13 +1116,15 @@
 	};
 	Boss.prototype = Object.create(Entity.prototype);
 	Boss.prototype.blipColor = "#FFFF00";
-	Boss.prototype.accel = .0008;
+	Boss.prototype.defaultAccel = .0008;
+	Boss.prototype.defaultMaxVel = .4;
+	Boss.prototype.accel = Boss.prototype.defaultAccel;
 	Boss.prototype.angleDelta = 0;
-	Boss.prototype.maxVel = .4;
+	Boss.prototype.maxVel = Boss.prototype.defaultMaxVel;
 	Boss.prototype.collRadius = BOSS_RADIUS;
 	Boss.prototype.target = null;
 	Boss.prototype.angleToTarget = 0;
-	Boss.prototype.turnSpeed = .05;
+	Boss.prototype.turnSpeed = .07;
 	Boss.prototype.activePieces = 0;
 	Boss.prototype.alive = false;
 	Boss.prototype.caught = false;
@@ -1126,6 +1133,11 @@
 	Boss.prototype.maxChasing = 0;
 	Boss.prototype.lastShooterSpawn = 0;
 	Boss.prototype.shooterSpawnInterval = 7000;
+	Boss.prototype.nearDistance = 200;
+	Boss.prototype.catchDistance = 100;
+	Boss.prototype.isHurt = false;
+	Boss.prototype.lastHurt = 0;
+	Boss.prototype.hurtTimeout = 800;
 	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
 		var miner;
@@ -1153,10 +1165,25 @@
 				}
 			}
 		} else {
-			if (!this.caught) {
-				this.turnToTarget(delta);
+			if (this.isHurt) {
+				this.accel = this.defaultAccel;
+				this.maxVel = this.defaultMaxVel / 2;
 				this.moveSelf(delta, elu);
-				if (distance(this.x, this.y, this.target.x, this.target.y) < 100) {
+				if (performance.now() - this.lastHurt > this.hurtTimeout) {
+					this.isHurt = false;
+				}
+			} else if (!this.caught) {
+				this.turnToTarget(delta);
+				if (distance(this.x, this.y, this.target.x, this.target.y) < this.nearDistance) {
+					// turn on a dime
+					this.accel = .01;
+					this.maxVel = this.defaultMaxVel * .75;
+				} else {
+					this.accel = this.defaultAccel;
+					this.maxVel = this.defaultMaxVel;
+				}
+				this.moveSelf(delta, elu);
+				if (distance(this.x, this.y, this.target.x, this.target.y) < this.catchDistance) {
 					this.caught = true;
 					this.lastCaught = performance.now();
 				}
@@ -1211,6 +1238,10 @@
 				}
 			}
 		}
+	};
+	Boss.prototype.hurt = function() {
+		this.lastHurt = performance.now();
+		this.isHurt = true;
 	};
 	Boss.prototype.draw = function () {			
 	};
