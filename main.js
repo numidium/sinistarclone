@@ -1063,13 +1063,17 @@
 		this.y = y;
 		this.xVel = Math.cos(dir) * this.maxVel;
 		this.yVel = Math.sin(-dir) * this.maxVel;
+		miner = elu.miners[0];
 		for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
-			miner = elu.miners[minerInd];
-			if (elu.miners[minerInd].active && !(elu.miners[minerInd].target instanceof Crystal) && !elu.miners[minerInd].hasCrystal) {
-				elu.miners[minerInd].target = this;
-				break;
+			if (elu.miners[minerInd].active &&
+				!(elu.miners[minerInd].target instanceof Crystal) &&
+				!elu.miners[minerInd].hasCrystal &&
+				distance(this.x, this.y, elu.miners[minerInd].x, elu.miners[minerInd].y) < 
+					distance(this.x, this.y, miner.x, miner.y)) {
+				miner = elu.miners[minerInd];
 			}
 		}
+		miner.target = this;
 		this.active = true;
 	};
 	Crystal.prototype.updateState = function (delta, elu) {
@@ -1113,7 +1117,7 @@
 	Boss.prototype.collRadius = BOSS_RADIUS;
 	Boss.prototype.target = null;
 	Boss.prototype.angleToTarget = 0;
-	Boss.prototype.turnSpeed = .02;
+	Boss.prototype.turnSpeed = .05;
 	Boss.prototype.activePieces = 0;
 	Boss.prototype.alive = false;
 	Boss.prototype.caught = false;
