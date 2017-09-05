@@ -202,7 +202,7 @@
 			entLookup.enemyBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
 		entLookup.shooters = new Array();
-		for (index = 0; index < 2; index++) {
+		for (index = 0; index < 10; index++) {
 			entLookup.entities.push(new Shooter());
 			//entLookup.entities[entLookup.entities.length - 1].activate(entLookup);
 			entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
@@ -399,6 +399,20 @@
         CTX.fillStyle = fill;
         CTX.fill();
     };
+	function getNearestActive(entList) {
+		var entInd;
+		var ent = entList[0];
+		
+		for (entInd = 0; entInd < entList.length; entInd++) {
+			if (entList[entInd].active &&
+				distance(this.x, this.y, entList[entInd].x, entList[entInd].y) < 
+					distance(this.x, this.y, ent.x, ent.y)) {
+				ent = entList[entInd];
+			}
+		}
+		
+		return ent;
+	};
     // Objects
 	function Entity() {};
 	Entity.prototype = {
@@ -831,8 +845,6 @@
 		// doesn't rotate
 	};
 	Shooter.prototype.updateState = function (delta, elu) {
-		var angleToTarget = 0;
-		
 		if (!elu.bossRef.caught) {
 			// movement
 			this.turnToTarget(delta);
@@ -847,20 +859,31 @@
 					this.shooting = true;
 				}
 			}
-			if (elu.playerRef.active && this.shooting &&
+			if (this.target instanceof Asteroid) {
+				if (performance.now() - this.lastShotTime > this.coolDown) {
+					this.shoot(elu); // mine asteroids if player is not around
+				}
+				if (distance(this.x, this.y, elu.playerRef.x, elu.playerRef.y) < this.lockOnDist) {
+					this.target = elu.playerRef;
+				}
+			} else if (elu.playerRef.active && this.shooting &&
 					performance.now() - this.lastShotTime > this.coolDown &&
 					distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
-				angleToTarget = getAngleTo(this, this.target);					
-				elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
-				elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
-				this.lastShotTime = performance.now();
+				this.shoot(elu);
 			}
 		}
 		fieldWrap(this, elu.playerRef);
 	};
+	Shooter.prototype.shoot = function (elu) {
+		var angleToTarget = getAngleTo(this, this.target);
+		
+		elu.enemyBullets[elu.enemyBulletInd].activate(this.x, this.y, angleToTarget + Math.PI / 2);
+		elu.enemyBulletInd = (elu.enemyBulletInd + 1) % elu.enemyBullets.length;
+		this.lastShotTime = performance.now();
+	};
 	Shooter.prototype.activate = function (elu) {
 		placeAwayFrom(elu.playerRef.x, elu.playerRef.y, this);
-		this.target = elu.playerRef;
+		this.target = getNearestActive(elu.asteroids);
 		this.foundTarget = false;
 		this.shooting = false;
 		this.active = true;
@@ -1117,7 +1140,7 @@
 	Boss.prototype = Object.create(Entity.prototype);
 	Boss.prototype.blipColor = "#FFFF00";
 	Boss.prototype.defaultAccel = .0008;
-	Boss.prototype.defaultMaxVel = .4;
+	Boss.prototype.defaultMaxVel = .35;
 	Boss.prototype.accel = Boss.prototype.defaultAccel;
 	Boss.prototype.angleDelta = 0;
 	Boss.prototype.maxVel = Boss.prototype.defaultMaxVel;
@@ -1138,6 +1161,7 @@
 	Boss.prototype.isHurt = false;
 	Boss.prototype.lastHurt = 0;
 	Boss.prototype.hurtTimeout = 800;
+	Boss.prototype.maxShooters = 2;
 	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
 		var miner;
@@ -1221,7 +1245,7 @@
 		fieldWrap(this, elu.playerRef);
 		// spawn shooters
 		if (performance.now() - this.lastShooterSpawn > this.shooterSpawnInterval) {
-			for (shooterInd = 0; shooterInd < elu.shooters.length; shooterInd++) {
+			for (shooterInd = 0; shooterInd < this.maxShooters && shooterInd < elu.shooters.length; shooterInd++) {
 				if (!elu.shooters[shooterInd].active) {
 					elu.shooters[shooterInd].activate(elu);
 					this.lastShooterSpawn = performance.now();
