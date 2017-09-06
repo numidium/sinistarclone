@@ -365,8 +365,8 @@
 	function placeAwayFrom(x, y, ent) {
 		var theta = Math.random() * (2 * Math.PI);
 		
-		ent.x = -MAX_DISTANCE + Math.cos(theta) * MAX_DISTANCE * 2;
-		ent.y = -MAX_DISTANCE + Math.sin(-theta) * MAX_DISTANCE * 2;
+		ent.x = x - MAX_DISTANCE + Math.cos(theta) * MAX_DISTANCE * 2;
+		ent.y = y - MAX_DISTANCE + Math.sin(-theta) * MAX_DISTANCE * 2;
 	};
 	function updateTriangle(vectors, angle, radius) {
 		vectors[0] = Math.cos(Math.PI / 2 + angle) * radius;
@@ -838,7 +838,7 @@
 	Shooter.prototype.coolDown = 1000;
 	Shooter.prototype.lockOnTime = 4000;
 	Shooter.prototype.lockOnDist = 400;
-	Shooter.prototype.foundTarget = false;
+	Shooter.prototype.foundPlayer = false;
 	Shooter.prototype.foundTime = 0;
 	Shooter.prototype.shooting = false;
 	Shooter.prototype.updateCollLines = function () {
@@ -851,22 +851,21 @@
 			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < this.minThrottleDist);
 			this.moveSelf(delta, elu);
 			// shoot
-			if (!this.shooting) {
-				if (!this.foundTarget && distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
-					this.foundTarget = true;
+			if (!this.shooting) { // wait before we start shooting the player
+				if (!this.foundPlayer && distance(this.x, this.y, elu.playerRef.x, elu.playerRef.y) < this.lockOnDist) {
+					this.foundPlayer = true;
 					this.foundTime = performance.now();
-				} else if (this.foundTarget && performance.now() - this.foundTime > this.lockOnTime) {
+					this.target = elu.playerRef;
+				} else if (this.foundPlayer && performance.now() - this.foundTime > this.lockOnTime) {
 					this.shooting = true;
 				}
 			}
-			if (this.target instanceof Asteroid) {
-				if (performance.now() - this.lastShotTime > this.coolDown) {
-					this.shoot(elu); // mine asteroids if player is not around
+			if (this.target instanceof Asteroid) { // mine asteroids if player is not around
+				if (performance.now() - this.lastShotTime > this.coolDown &&
+					distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
+					this.shoot(elu);
 				}
-				if (distance(this.x, this.y, elu.playerRef.x, elu.playerRef.y) < this.lockOnDist) {
-					this.target = elu.playerRef;
-				}
-			} else if (elu.playerRef.active && this.shooting &&
+			} else if (this.shooting && elu.playerRef.active &&
 					performance.now() - this.lastShotTime > this.coolDown &&
 					distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
 				this.shoot(elu);
@@ -884,7 +883,7 @@
 	Shooter.prototype.activate = function (elu) {
 		placeAwayFrom(elu.playerRef.x, elu.playerRef.y, this);
 		this.target = getNearestActive(elu.asteroids);
-		this.foundTarget = false;
+		this.foundPlayer = false;
 		this.shooting = false;
 		this.active = true;
 	};
