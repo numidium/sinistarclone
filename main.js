@@ -546,7 +546,7 @@
 	Player.prototype.lastDeath = 0;
 	Player.prototype.respawnDelay = 4000;
 	Player.prototype.lives = 2;
-	Player.prototype.bombs = 0;
+	Player.prototype.bombs = 10;
 	Player.prototype.MAX_BOMBS = 10;
 	Player.prototype.MAX_LIVES = 10;
 	Player.prototype.updateCollLines = function () {
@@ -836,6 +836,7 @@
 	Shooter.prototype.lastShotTime = 0;
 	Shooter.prototype.minThrottleDist = 200;
 	Shooter.prototype.coolDown = 1000;
+	Shooter.prototype.miningCooldown = 15000;
 	Shooter.prototype.lockOnTime = 4000;
 	Shooter.prototype.lockOnDist = 400;
 	Shooter.prototype.foundPlayer = false;
@@ -861,7 +862,7 @@
 				}
 			}
 			if (this.target instanceof Asteroid) { // mine asteroids if player is not around
-				if (performance.now() - this.lastShotTime > this.coolDown &&
+				if (performance.now() - this.lastShotTime > this.miningCooldown &&
 					distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
 					this.shoot(elu);
 				}
@@ -921,8 +922,10 @@
 		this.x += this.xVel * delta;
 		this.y += this.yVel * delta;
 		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
-			if (circleCollidingWith(this, elu.asteroids[entInd])) {
-				elu.asteroids[entInd].heatUp(3);
+			if (elu.asteroids[entInd].active && circleCollidingWith(this, elu.asteroids[entInd])) {
+				elu.crystals[elu.crystalInd].activate(elu.asteroids[entInd].x, elu.asteroids[entInd].y, Math.random() * 2 * Math.PI, elu);
+				elu.asteroids[entInd].kill(elu);
+				elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
 				this.active = false;
 				return;
 			}
@@ -1021,7 +1024,7 @@
 		// if we can't find an active piece then just go in the boss's general direction
 		this.target = nearestPiece || elu.bossRef;
 		// immediately point at the target
-		this.angle = getAngleTo(this, this.target) - Math.PI / 2;
+		this.angle = getAngleTo(this, this.target);
 		this.x = x;
 		this.y = y;
 		this.throttle = true;
@@ -1065,7 +1068,6 @@
 			if (elu.bossPieces[pieceInd].active &&
 				collidingWith(this, elu.bossPieces[pieceInd])) {
 					elu.bossPieces[pieceInd].kill(elu);
-					elu.bossRef.hurt();
 					this.active = false;
 					break;
 				}
@@ -1138,7 +1140,7 @@
 	};
 	Boss.prototype = Object.create(Entity.prototype);
 	Boss.prototype.blipColor = "#FFFF00";
-	Boss.prototype.defaultAccel = .0008;
+	Boss.prototype.defaultAccel = .0007;
 	Boss.prototype.defaultMaxVel = .35;
 	Boss.prototype.accel = Boss.prototype.defaultAccel;
 	Boss.prototype.angleDelta = 0;
@@ -1263,6 +1265,10 @@
 		}
 	};
 	Boss.prototype.hurt = function() {
+		if (this.activePieces == 0) {
+			this.active = false;
+			return;
+		}
 		this.lastHurt = performance.now();
 		this.isHurt = true;
 	};
@@ -1349,6 +1355,7 @@
 	};
 	BossPiece.prototype.kill = function (elu) {
 		elu.bossRef.activePieces--;
+		elu.bossRef.hurt();
 		this.active = false;
 	};
 	BossPiece.prototype.draw = function () {
