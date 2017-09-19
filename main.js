@@ -40,7 +40,6 @@
 			bombInd: 0
         };
 		var lifeSymbolLines = new Array(6);
-		updateTriangle(lifeSymbolLines, 0, 7);
         function keyDownHandler(e) {
             switch(e.keyCode) {
                 case 38: // up
@@ -155,7 +154,8 @@
 			}
 			requestAnimationFrame(mainLoop);
 		};
-
+		
+		updateTriangle(lifeSymbolLines, 0, 7);
         document.onkeydown = keyDownHandler;
 		document.onkeyup = keyUpHandler;
         entLookup.bossRef = new Boss();
@@ -546,7 +546,7 @@
 	Player.prototype.lastDeath = 0;
 	Player.prototype.respawnDelay = 4000;
 	Player.prototype.lives = 2;
-	Player.prototype.bombs = 10;
+	Player.prototype.bombs = 0;
 	Player.prototype.MAX_BOMBS = 10;
 	Player.prototype.MAX_LIVES = 10;
 	Player.prototype.updateCollLines = function () {
@@ -679,7 +679,7 @@
 		this.y += this.yVel * delta;
 		fieldWrap(this, elu.playerRef);
 	};
-	Asteroid.prototype.heatUp = function (amount) {
+	Asteroid.prototype.heatUp = function (amount, elu) {
 		var displaceAngle;
 		
 		if (this.heat == 0) {
@@ -688,11 +688,11 @@
 		this.heat += amount;
 		if (this.heat > this.maxHeat) {
 			this.heat = 0;
-			kill(this);
+			this.kill(elu.playerRef);
 		}
 	};
-	Asteroid.prototype.kill = function () {
-		kill(this);
+	Asteroid.prototype.kill = function (pRef) {
+		placeAwayFrom(pRef.x, pRef.y, this);
 	};
 	Asteroid.prototype.draw = function () {
 		var rChannel;
@@ -710,7 +710,6 @@
     };
 	function Miner() {
 		this.collLines = new Array(6);
-		this.active = true;
 		this.throttle = true;
 	};
     Miner.prototype = Object.create(Entity.prototype);
@@ -966,7 +965,7 @@
 		this.y += this.yVel * delta;
 		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
 			if (circleCollidingWith(this, elu.asteroids[entInd])) {
-				elu.asteroids[entInd].heatUp(1);
+				elu.asteroids[entInd].heatUp(1, elu);
 				this.active = false;
 				return;
 			}
@@ -1067,7 +1066,9 @@
 		for (pieceInd = 0; pieceInd < elu.bossPieces.length; pieceInd++) {
 			if (elu.bossPieces[pieceInd].active &&
 				collidingWith(this, elu.bossPieces[pieceInd])) {
-					elu.bossPieces[pieceInd].kill(elu);
+					if (elu.bossRef.alive) {
+						elu.bossPieces[pieceInd].kill(elu);
+					}
 					this.active = false;
 					break;
 				}
