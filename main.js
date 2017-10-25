@@ -549,11 +549,16 @@
 	Player.prototype.bombs = 0;
 	Player.prototype.MAX_BOMBS = 10;
 	Player.prototype.MAX_LIVES = 10;
+	Player.prototype.warpDelay = 3000;
 	Player.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
 	Player.prototype.updateState = function (delta, elu) {
-		if (!elu.bossRef.caught) {
+		if (!elu.bossRef.active) {
+			this.xVel = this.maxVel;
+			this.yVel = this.maxVel;
+			this.warp(delta, elu);
+		} else if (!elu.bossRef.caught) {
 			this.moveSelf(delta, elu);
 		}
 		// make the screen track the player
@@ -621,7 +626,18 @@
 			this.bombs--;
 		}
 	};
-	Player.prototype.draw = function() {
+	Player.prototype.warp = function (delta, elu) {
+		var timeSince = performance.now() - elu.bossRef.timeOfDeath;
+		
+		if (timeSince > this.warpDelay) {
+			this.x += delta * this.xVel;
+			this.y += delta * this.yVel;
+		}
+		if (timeSince > this.warpDelay * 3) {
+			elu.bossRef.activate(elu);
+		}
+	};
+	Player.prototype.draw = function () {
 		drawPolygon(this.x, this.y, this.collLines, "#00FF00");
 	};
     function Asteroid(x, y) {
@@ -1163,6 +1179,7 @@
 	Boss.prototype.isHurt = false;
 	Boss.prototype.lastHurt = 0;
 	Boss.prototype.hurtTimeout = 800;
+	Boss.prototype.timeOfDeath = 0;
 	Boss.prototype.maxShooters = 2;
 	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
@@ -1265,14 +1282,18 @@
 			}
 		}
 	};
-	Boss.prototype.hurt = function() {
+	Boss.prototype.hurt = function () {
 		if (this.activePieces == 0) {
+			this.timeOfDeath = performance.now();
 			this.active = false;
 			return;
 		}
 		this.lastHurt = performance.now();
 		this.isHurt = true;
 	};
+	Boss.prototype.activate = function () {
+		this.Boss();
+	}
 	Boss.prototype.draw = function () {			
 	};
 	function BossPiece(pieceNumber) {
