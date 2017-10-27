@@ -555,8 +555,8 @@
 	};
 	Player.prototype.updateState = function (delta, elu) {
 		if (!elu.bossRef.active) {
-			this.xVel = this.maxVel;
-			this.yVel = this.maxVel;
+			this.xVel = this.maxVel * 3;
+			this.yVel = this.maxVel * 3;
 			this.warp(delta, elu);
 		} else if (!elu.bossRef.caught) {
 			this.moveSelf(delta, elu);
@@ -856,13 +856,17 @@
 	Shooter.prototype.lockOnDist = 400;
 	Shooter.prototype.foundPlayer = false;
 	Shooter.prototype.foundTime = 0;
+	Shooter.prototype.maxTargetDist = 500;
 	Shooter.prototype.shooting = false;
 	Shooter.prototype.updateCollLines = function () {
 		// doesn't rotate
 	};
 	Shooter.prototype.updateState = function (delta, elu) {
+		var dist;
+		
 		if (!elu.bossRef.caught) {
 			// movement
+			dist = distance(this.x, this.y, this.target.x, this.target.y);
 			this.turnToTarget(delta);
 			this.throttle = !(distance(this.x, this.y, this.target.x, this.target.y) < this.minThrottleDist);
 			this.moveSelf(delta, elu);
@@ -877,13 +881,16 @@
 				}
 			}
 			if (this.target instanceof Asteroid) { // mine asteroids if player is not around
+				if (dist > this.maxTargetDist) {
+					this.target = getNearestActive(elu.asteroids);
+				}
 				if (performance.now() - this.lastShotTime > this.miningCooldown &&
-					distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
+					dist < this.lockOnDist) {
 					this.shoot(elu);
 				}
 			} else if (this.shooting && elu.playerRef.active &&
 					performance.now() - this.lastShotTime > this.coolDown &&
-					distance(this.x, this.y, this.target.x, this.target.y) < this.lockOnDist) {
+					dist < this.lockOnDist) {
 				this.shoot(elu);
 			}
 		}
@@ -898,7 +905,7 @@
 	};
 	Shooter.prototype.activate = function (elu) {
 		placeAwayFrom(elu.playerRef.x, elu.playerRef.y, this);
-		this.target = getNearestActive(elu.asteroids);
+		this.target = getRandomIndex(elu.asteroids);
 		this.foundPlayer = false;
 		this.shooting = false;
 		this.active = true;
@@ -939,7 +946,7 @@
 		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
 			if (elu.asteroids[entInd].active && circleCollidingWith(this, elu.asteroids[entInd])) {
 				elu.crystals[elu.crystalInd].activate(elu.asteroids[entInd].x, elu.asteroids[entInd].y, Math.random() * 2 * Math.PI, elu);
-				elu.asteroids[entInd].kill(elu);
+				elu.asteroids[entInd].kill(elu.playerRef);
 				elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
 				this.active = false;
 				return;
@@ -1292,7 +1299,7 @@
 		this.isHurt = true;
 	};
 	Boss.prototype.activate = function () {
-		this.Boss();
+		Boss.call(this);
 	}
 	Boss.prototype.draw = function () {			
 	};
