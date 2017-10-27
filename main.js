@@ -399,14 +399,14 @@
         CTX.fillStyle = fill;
         CTX.fill();
     };
-	function getNearestActive(entList) {
+	function getNearestActive(self, entList) {
 		var entInd;
 		var ent = entList[0];
 		
 		for (entInd = 0; entInd < entList.length; entInd++) {
 			if (entList[entInd].active &&
-				distance(this.x, this.y, entList[entInd].x, entList[entInd].y) < 
-					distance(this.x, this.y, ent.x, ent.y)) {
+				distance(self.x, self.y, entList[entInd].x, entList[entInd].y) < 
+					distance(self.x, self.y, ent.x, ent.y)) {
 				ent = entList[entInd];
 			}
 		}
@@ -882,7 +882,7 @@
 			}
 			if (this.target instanceof Asteroid) { // mine asteroids if player is not around
 				if (dist > this.maxTargetDist) {
-					this.target = getNearestActive(elu.asteroids);
+					this.target = getNearestActive(this, elu.asteroids);
 				}
 				if (performance.now() - this.lastShotTime > this.miningCooldown &&
 					dist < this.lockOnDist) {
