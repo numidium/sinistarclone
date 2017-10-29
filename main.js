@@ -546,7 +546,7 @@
 	Player.prototype.lastDeath = 0;
 	Player.prototype.respawnDelay = 4000;
 	Player.prototype.lives = 2;
-	Player.prototype.bombs = 0;
+	Player.prototype.bombs = 10;
 	Player.prototype.MAX_BOMBS = 10;
 	Player.prototype.MAX_LIVES = 10;
 	Player.prototype.warpDelay = 3000;
@@ -614,7 +614,7 @@
 		this.active = false;
 		this.lastDeath = performance.now();
 	};
-	Player.prototype.addBomb = function() {
+	Player.prototype.addBomb = function () {
 		if (this.bombs < this.MAX_BOMBS) {
 			this.bombs++;
 		}
@@ -741,7 +741,6 @@
 	Miner.prototype.hasCrystal = false;
 	Miner.prototype.avoiding = false;
 	Miner.prototype.turnSign = 1;
-	Miner.prototype.nearTarget = false;
 	Miner.prototype.nearDistance = 100;
 	Miner.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
@@ -754,11 +753,8 @@
 		// update target
 		if (this.hasCrystal && this.target != elu.bossRef && !elu.bossRef.alive) {
 			this.target = elu.bossRef;
-			this.nearTarget = false;
-		} else if (!this.target.active || distanceToTarget < minTargetDist) {
-			this.target = getRandomIndex(elu.asteroids);
-		}
-		if (this.target == elu.bossRef && elu.bossRef.alive) {
+		} else if (!this.target.active || distanceToTarget < minTargetDist ||
+					(this.target == elu.bossRef && elu.bossRef.alive)) {
 			this.target = getRandomIndex(elu.asteroids);
 		}
 		// movement
@@ -795,8 +791,8 @@
 			this.lastBump = performance.now();
 		}
 		// accurately approach small targets
-		if ((this.target instanceof Crystal || this.target instanceof Boss) &&
-			!this.nearTarget && distanceToTarget < this.nearDistance) {
+		if ((this.target instanceof Crystal || this.target instanceof Boss) && 
+			distanceToTarget < this.nearDistance) {
 			this.xVel = this.yVel = 0;
 			this.x += 2 * Math.cos(angleToTarget + Math.PI / 2);
 			this.y += 2 * Math.sin(-angleToTarget - Math.PI / 2);
@@ -815,7 +811,6 @@
 			elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
 		}
 		this.hasCrystal = false;
-		this.nearTarget = false;
 		this.target = getRandomIndex(elu.asteroids);
 		this.throttle = true;
 		kill(this);
@@ -844,7 +839,7 @@
 				Math.cos(Math.PI * (4 / 3)) * Shooter.prototype.collRadius,
 				Math.sin(-Math.PI * (4 / 3)) * Shooter.prototype.collRadius,
 				Math.cos(Math.PI * (5 / 3)) * Shooter.prototype.collRadius,
-				Math.sin(-Math.PI * (5 / 3)) * Shooter.prototype.collRadius],
+				Math.sin(-Math.PI * (5 / 3)) * Shooter.prototype.collRadius];
 	Shooter.prototype.target = null;
 	Shooter.prototype.angleToTarget = 0;
 	Shooter.prototype.turnSpeed = .002;
@@ -1292,9 +1287,11 @@
 	Boss.prototype.hurt = function () {
 		if (this.activePieces == 0) {
 			this.timeOfDeath = performance.now();
+			this.alive = false;
 			this.active = false;
 			return;
 		}
+		this.caught = false; // let go of the player
 		this.lastHurt = performance.now();
 		this.isHurt = true;
 	};
