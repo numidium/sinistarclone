@@ -628,6 +628,7 @@
 	};
 	Player.prototype.warp = function (delta, elu) {
 		var timeSince = performance.now() - elu.bossRef.timeOfDeath;
+		var minerInd;
 		
 		if (timeSince > this.warpDelay) {
 			this.x += delta * this.xVel;
@@ -635,6 +636,11 @@
 		}
 		if (timeSince > this.warpDelay * 3) {
 			elu.bossRef.activate(elu);
+			elu.playerRef.caught = false;
+			// miners should have their crystals cleared at next level for balance purposes
+			for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
+				elu.miners[minerInd].hasCrystal = false;
+			}
 		}
 	};
 	Player.prototype.draw = function () {
@@ -751,7 +757,7 @@
 		var distanceToTarget = distance(this.x, this.y, this.target.x, this.target.y);
 		
 		// update target
-		if (this.hasCrystal && this.target != elu.bossRef && !elu.bossRef.alive) {
+		if (this.hasCrystal && !elu.bossRef.alive && this.target != elu.bossRef) {
 			this.target = elu.bossRef;
 		} else if (!this.target.active || distanceToTarget < minTargetDist ||
 					(this.target == elu.bossRef && elu.bossRef.alive)) {
@@ -807,7 +813,7 @@
 	};
 	Miner.prototype.kill = function (elu) {
 		if (this.hasCrystal) {
-			elu.crystals[elu.crystalInd].activate(this.x, this.y, Math.random() * 2 * Math.PI, elu);
+			elu.crystals[elu.crystalInd].activate(this.x, this.y, this.angle + Math.PI / 2, elu);
 			elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
 		}
 		this.hasCrystal = false;
@@ -1056,6 +1062,9 @@
 			return;
 		}
 		this.updateCollLines();
+		if (!this.target.active) {
+			this.target = getNearestActive(this, elu.bossPieces);
+		}
 		this.turnToTarget(delta);
 		this.xVelDelta = this.accel * Math.cos(this.angle + Math.PI / 2);
 		this.yVelDelta = this.accel * Math.sin(-(this.angle + Math.PI / 2));
@@ -1112,7 +1121,7 @@
 		this.xVel = Math.cos(dir) * this.maxVel;
 		this.yVel = Math.sin(-dir) * this.maxVel;
 		miner = elu.miners[0];
-		for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
+		for (minerInd = 1; minerInd < elu.miners.length; minerInd++) {
 			if (elu.miners[minerInd].active &&
 				!(elu.miners[minerInd].target instanceof Crystal) &&
 				!elu.miners[minerInd].hasCrystal &&
@@ -1140,7 +1149,7 @@
 			if (other && other.active && !other.hasCrystal) {
 				other.hasCrystal = true;
 				this.active = false;
-				break;
+				return;
 			}
 		}
 		other = circleCollidingWith(this, elu.playerRef);
