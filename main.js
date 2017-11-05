@@ -1312,7 +1312,9 @@
 	function BossPiece(pieceNumber) {
 		switch (pieceNumber) {
 			case 0:
-				this.collLines = [0,
+				this.collLines = [Math.cos(Math.PI / 4) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI / 4) * Boss.prototype.collRadius / 2,
+					Boss.prototype.collRadius / 2,
 					0,
 					Boss.prototype.collRadius,
 					0,
@@ -1320,56 +1322,70 @@
 					Math.sin(-Math.PI / 4) * Boss.prototype.collRadius];
 				break;
 			case 1:
-				this.collLines = [0,
-					0,
+				this.collLines = [Math.cos(Math.PI / 2) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI / 2) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI / 4) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI / 4) * Boss.prototype.collRadius / 2,
 					Math.cos(Math.PI / 4) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI / 4) * Boss.prototype.collRadius,
 					Math.cos(Math.PI / 2) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI / 2) * Boss.prototype.collRadius];
 				break;
 			case 2:
-				this.collLines = [0,
-					0,
+				this.collLines = [Math.cos(Math.PI * (3 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (3 / 4)) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI / 2) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI / 2) * Boss.prototype.collRadius / 2,
 					Math.cos(Math.PI / 2) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI / 2) * Boss.prototype.collRadius,
 					Math.cos(Math.PI * (3 / 4)) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI * (3 / 4)) * Boss.prototype.collRadius];
 				break;
 			case 3:
-				this.collLines = [0,
-					0,
+				this.collLines = [Math.cos(Math.PI) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI * (3 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (3 / 4)) * Boss.prototype.collRadius / 2,
 					Math.cos(Math.PI * (3 / 4)) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI * (3 / 4)) * Boss.prototype.collRadius,
 					Math.cos(Math.PI) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI) * Boss.prototype.collRadius];
 				break;
 			case 4:
-				this.collLines = [0,
-					0,
+				this.collLines = [Math.cos(Math.PI * (5 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (5 / 4)) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI) * Boss.prototype.collRadius / 2,
 					Math.cos(Math.PI) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI) * Boss.prototype.collRadius,
 					Math.cos(Math.PI * (5 / 4)) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI * (5 / 4)) * Boss.prototype.collRadius];
 				break;
 			case 5:
-				this.collLines = [0,
-					0,
+				this.collLines = [Math.cos(Math.PI * (3 / 2)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (3 / 2)) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI * (5 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (5 / 4)) * Boss.prototype.collRadius / 2,
 					Math.cos(Math.PI * (5 / 4)) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI * (5 / 4)) * Boss.prototype.collRadius,
 					Math.cos(Math.PI * (3 / 2)) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI * (3 / 2)) * Boss.prototype.collRadius];
 				break;
 			case 6:
-				this.collLines = [0,
-					0,
+				this.collLines = [Math.cos(Math.PI * (7 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (7 / 4)) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI * (3 / 2)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (3 / 2)) * Boss.prototype.collRadius / 2,
 					Math.cos(Math.PI * (3 / 2)) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI * (3 / 2)) * Boss.prototype.collRadius,
 					Math.cos(Math.PI * (7 / 4)) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI * (7 / 4)) * Boss.prototype.collRadius];
 				break;
 			case 7:
-				this.collLines = [0,
+				this.collLines = [Boss.prototype.collRadius / 2,
 					0,
+					Math.cos(Math.PI * (7 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (7 / 4)) * Boss.prototype.collRadius / 2,
 					Math.cos(Math.PI * (7 / 4)) * Boss.prototype.collRadius,
 					Math.sin(-Math.PI * (7 / 4)) * Boss.prototype.collRadius,
 					Boss.prototype.collRadius,
