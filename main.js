@@ -558,23 +558,21 @@
 			this.xVel = this.maxVel * 3;
 			this.yVel = this.maxVel * 3;
 			this.warp(delta, elu);
-		} else if (!elu.bossRef.caught) {
+		} else {
 			this.moveSelf(delta, elu);
-		}
-		// make the screen track the player
-		screenBoundX = Math.abs((this.xVel / this.maxVel)) * MAX_SCREEN_BOUND_X;
-		screenBoundY = Math.abs((this.yVel / this.maxVel)) * MAX_SCREEN_BOUND_Y;
-		if (this.x - screenX > screenBoundX) {
-			screenX = this.x - screenBoundX;
-		}
-		else if (this.x - screenX < -screenBoundX) {
-			screenX = this.x + screenBoundX;
-		}
-		if (this.y - screenY > screenBoundY) {
-			screenY = this.y - screenBoundY;
-		}
-		else if (this.y - screenY < -screenBoundY) {
-			screenY = this.y + screenBoundY;
+			// make the screen track the player
+			screenBoundX = Math.abs((this.xVel / this.maxVel)) * MAX_SCREEN_BOUND_X;
+			screenBoundY = Math.abs((this.yVel / this.maxVel)) * MAX_SCREEN_BOUND_Y;
+			if (this.x - screenX > screenBoundX) {
+				screenX = this.x - screenBoundX;
+			} else if (this.x - screenX < -screenBoundX) {
+				screenX = this.x + screenBoundX;
+			}
+			if (this.y - screenY > screenBoundY) {
+				screenY = this.y - screenBoundY;
+			} else if (this.y - screenY < -screenBoundY) {
+				screenY = this.y + screenBoundY;
+			}
 		}
 		// shoot
 		if (this.shooting && performance.now() - this.lastShotTime >= this.coolDown) {
@@ -633,10 +631,23 @@
 		if (timeSince > this.warpDelay) {
 			this.x += delta * this.xVel;
 			this.y += delta * this.yVel;
+			// make the screen track the player
+			screenBoundX = Math.abs((this.xVel / (this.maxVel * 3))) * MAX_SCREEN_BOUND_X;
+			screenBoundY = Math.abs((this.yVel / (this.maxVel * 3))) * MAX_SCREEN_BOUND_Y;
+			if (this.x - screenX > screenBoundX) {
+				screenX = this.x - screenBoundX;
+			} else if (this.x - screenX < -screenBoundX) {
+				screenX = this.x + screenBoundX;
+			}
+			if (this.y - screenY > screenBoundY) {
+				screenY = this.y - screenBoundY;
+			} else if (this.y - screenY < -screenBoundY) {
+				screenY = this.y + screenBoundY;
+			}
+			this.updateCollLines();
 		}
 		if (timeSince > this.warpDelay * 3) {
 			elu.bossRef.activate(elu);
-			elu.playerRef.caught = false;
 			// miners should have their crystals cleared at next level for balance purposes
 			for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
 				elu.miners[minerInd].hasCrystal = false;
@@ -1206,7 +1217,7 @@
 				miner = elu.miners[minerInd];
 				if (distance(this.x, this.y, miner.x, miner.y) < 25 && miner.hasCrystal) {
 					this.activePieces++;
-					if (this.activePieces == 8) {
+					if (this.activePieces == elu.bossPieces.length) {
 						this.alive = true;
 					}
 					elu.bossPieces[this.activePieces - 1].active = true;
@@ -1237,7 +1248,8 @@
 					this.maxVel = this.defaultMaxVel;
 				}
 				this.moveSelf(delta, elu);
-				if (distance(this.x, this.y, this.target.x, this.target.y) < this.catchDistance) {
+				if (this.target.active && 
+					distance(this.x, this.y, this.target.x, this.target.y) < this.catchDistance) {
 					this.caught = true;
 					this.lastCaught = performance.now();
 				}
@@ -1294,15 +1306,17 @@
 		}
 	};
 	Boss.prototype.hurt = function () {
+		this.caught = false; // let go of the player
 		if (this.activePieces == 0) {
 			this.timeOfDeath = performance.now();
 			this.alive = false;
 			this.active = false;
-			return;
+			this.caught = false;
+			
+		} else {
+			this.lastHurt = performance.now();
+			this.isHurt = true;
 		}
-		this.caught = false; // let go of the player
-		this.lastHurt = performance.now();
-		this.isHurt = true;
 	};
 	Boss.prototype.activate = function () {
 		Boss.call(this);
