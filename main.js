@@ -202,9 +202,8 @@
 			entLookup.enemyBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
 		entLookup.shooters = new Array();
-		for (index = 0; index < 10; index++) {
+		for (index = 0; index < 5; index++) {
 			entLookup.entities.push(new Shooter());
-			//entLookup.entities[entLookup.entities.length - 1].activate(entLookup);
 			entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
 		}
 		entLookup.crystals = new Array();
@@ -550,6 +549,7 @@
 	Player.prototype.MAX_BOMBS = 10;
 	Player.prototype.MAX_LIVES = 10;
 	Player.prototype.warpDelay = 3000;
+	Player.prototype.level = 0;
 	Player.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
@@ -626,7 +626,7 @@
 	};
 	Player.prototype.warp = function (delta, elu) {
 		var timeSince = performance.now() - elu.bossRef.timeOfDeath;
-		var minerInd;
+		var entInd;
 		
 		if (timeSince > this.warpDelay) {
 			this.x += delta * this.xVel;
@@ -647,11 +647,52 @@
 			this.updateCollLines();
 		}
 		if (timeSince > this.warpDelay * 3) {
-			elu.bossRef.activate(elu);
-			// miners should have their crystals cleared at next level for balance purposes
-			for (minerInd = 0; minerInd < elu.miners.length; minerInd++) {
-				elu.miners[minerInd].hasCrystal = false;
+			// new level setup
+			for (entInd = 0; entInd < elu.miners.length; entInd++) {
+				elu.miners[entInd].hasCrystal = false;
 			}
+			elu.playerRef.level++;
+			switch (elu.playerRef.level % 3) {
+				case 1:
+					elu.bossRef.maxMiners = elu.miners.length;
+					elu.bossRef.maxShooters = 3;
+					elu.bossRef.maxAsteroids = 30;
+					break;
+				case 2:
+					elu.bossRef.maxMiners = 5;
+					elu.bossRef.maxShooters = elu.shooters.length;
+					elu.bossRef.maxAsteroids = 30;
+					break;
+				case 0:
+					elu.bossRef.maxMiners = 5;
+					elu.bossRef.maxShooters = 3;
+					elu.bossRef.maxAsteroids = elu.asteroids.length;
+					break;
+				default:
+					break;
+			}
+			for (entInd = 0; entInd < elu.miners.length; entInd++) {
+				if (entInd < elu.bossRef.maxMiners) {
+					elu.miners[entInd].active = true;
+				} else {
+					elu.miners[entInd].active = false;
+				}
+			}
+			for (entInd = 0; entInd < elu.shooters.length; entInd++) {
+				if (entInd < elu.bossRef.maxShooters) {
+					elu.shooters[entInd].active = true;
+				} else {
+					elu.shooters[entInd].active = false;
+				}
+			}
+			for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
+				if (entInd < elu.bossRef.maxAsteroids) {
+					elu.asteroids[entInd].active = true;
+				} else {
+					elu.asteroids[entInd].active = false;
+				}
+			}
+			elu.bossRef.activate(elu);
 		}
 	};
 	Player.prototype.draw = function () {
@@ -1203,6 +1244,8 @@
 	Boss.prototype.hurtTimeout = 800;
 	Boss.prototype.timeOfDeath = 0;
 	Boss.prototype.maxShooters = 2;
+	Boss.prototype.maxMiners = 6;
+	Boss.prototype.maxAsteroids = 30;
 	Boss.prototype.updateState = function (delta, elu) {
 		var minerInd;
 		var miner;
