@@ -202,7 +202,7 @@
 			entLookup.enemyBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
 		entLookup.shooters = new Array();
-		for (index = 0; index < 5; index++) {
+		for (index = 0; index < 10; index++) {
 			entLookup.entities.push(new Shooter());
 			entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
 		}
@@ -364,8 +364,8 @@
 	function placeAwayFrom(x, y, ent) {
 		var theta = Math.random() * (2 * Math.PI);
 		
-		ent.x = x - MAX_DISTANCE + Math.cos(theta) * MAX_DISTANCE * 2;
-		ent.y = y - MAX_DISTANCE + Math.sin(-theta) * MAX_DISTANCE * 2;
+		ent.x = x + Math.cos(theta) * MAX_DISTANCE;
+		ent.y = y + Math.sin(-theta) * MAX_DISTANCE;
 	};
 	function updateTriangle(vectors, angle, radius) {
 		vectors[0] = Math.cos(Math.PI / 2 + angle) * radius;
@@ -655,13 +655,13 @@
 			switch (elu.playerRef.level % 3) {
 				case 1:
 					elu.bossRef.maxMiners = elu.miners.length;
-					elu.bossRef.maxShooters = 3;
-					elu.bossRef.maxAsteroids = 30;
+					elu.bossRef.maxShooters = 5;
+					elu.bossRef.maxAsteroids = 20;
 					break;
 				case 2:
 					elu.bossRef.maxMiners = 5;
 					elu.bossRef.maxShooters = elu.shooters.length;
-					elu.bossRef.maxAsteroids = 30;
+					elu.bossRef.maxAsteroids = 20;
 					break;
 				case 0:
 					elu.bossRef.maxMiners = 5;
@@ -679,11 +679,7 @@
 				}
 			}
 			for (entInd = 0; entInd < elu.shooters.length; entInd++) {
-				if (entInd < elu.bossRef.maxShooters) {
-					elu.shooters[entInd].active = true;
-				} else {
 					elu.shooters[entInd].active = false;
-				}
 			}
 			for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
 				if (entInd < elu.bossRef.maxAsteroids) {
@@ -1330,7 +1326,7 @@
 		fieldWrap(this, elu.playerRef);
 		// spawn shooters
 		if (performance.now() - this.lastShooterSpawn > this.shooterSpawnInterval) {
-			for (shooterInd = 0; shooterInd < this.maxShooters && shooterInd < elu.shooters.length; shooterInd++) {
+			for (shooterInd = 0; shooterInd < this.maxShooters; shooterInd++) {
 				if (!elu.shooters[shooterInd].active) {
 					elu.shooters[shooterInd].activate(elu);
 					this.lastShooterSpawn = performance.now();
