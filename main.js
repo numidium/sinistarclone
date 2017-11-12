@@ -636,8 +636,7 @@
 		if (timeSince > this.warpDelay) {
 			this.x += delta * this.xVel;
 			this.y += delta * this.yVel;
-			trackScreenToEntity(this, this.maxSpeed * 3);
-			this.updateCollLines();
+			trackScreenToEntity(this, this.maxVel * 3);
 		} else {
 			if (Math.abs(wrappedAngle - destAngle) > .4) {
 				if (wrappedAngle - destAngle > 0) {
@@ -647,6 +646,7 @@
 				}
 			}
 		}
+		this.updateCollLines();
 		if (timeSince > this.warpDelay * 3) {
 			// new level setup
 			for (entInd = 0; entInd < elu.miners.length; entInd++) {
