@@ -412,6 +412,20 @@
 		
 		return ent;
 	};
+	function trackScreenToEntity(self, maxSpeed) {
+		screenBoundX = Math.abs(self.xVel / maxSpeed) * MAX_SCREEN_BOUND_X;
+		screenBoundY = Math.abs(self.yVel / maxSpeed) * MAX_SCREEN_BOUND_Y;
+		if (self.x - screenX > screenBoundX) {
+			screenX = self.x - screenBoundX;
+		} else if (self.x - screenX < -screenBoundX) {
+			screenX = self.x + screenBoundX;
+		}
+		if (self.y - screenY > screenBoundY) {
+			screenY = self.y - screenBoundY;
+		} else if (self.y - screenY < -screenBoundY) {
+			screenY = self.y + screenBoundY;
+		}
+	};
     // Objects
 	function Entity() {};
 	Entity.prototype = {
@@ -535,6 +549,7 @@
 	Player.prototype.accel = .0004;
 	Player.prototype.angleDelta = 0;
 	Player.prototype.maxVel = .3;
+	Player.prototype.turnSpeed = .005;
 	Player.prototype.throttle = false;
 	Player.prototype.collRadius = 15;
 	Player.prototype.collLines = [];
@@ -560,19 +575,7 @@
 			this.warp(delta, elu);
 		} else {
 			this.moveSelf(delta, elu);
-			// make the screen track the player
-			screenBoundX = Math.abs((this.xVel / this.maxVel)) * MAX_SCREEN_BOUND_X;
-			screenBoundY = Math.abs((this.yVel / this.maxVel)) * MAX_SCREEN_BOUND_Y;
-			if (this.x - screenX > screenBoundX) {
-				screenX = this.x - screenBoundX;
-			} else if (this.x - screenX < -screenBoundX) {
-				screenX = this.x + screenBoundX;
-			}
-			if (this.y - screenY > screenBoundY) {
-				screenY = this.y - screenBoundY;
-			} else if (this.y - screenY < -screenBoundY) {
-				screenY = this.y + screenBoundY;
-			}
+			trackScreenToEntity(this, this.maxVel);
 		}
 		// shoot
 		if (this.shooting && performance.now() - this.lastShotTime >= this.coolDown) {
@@ -627,24 +630,22 @@
 	Player.prototype.warp = function (delta, elu) {
 		var timeSince = performance.now() - elu.bossRef.timeOfDeath;
 		var entInd;
+		var wrappedAngle = wrapAngle(this.angle);
+		const destAngle = (7 / 4) * Math.PI;
 		
 		if (timeSince > this.warpDelay) {
 			this.x += delta * this.xVel;
 			this.y += delta * this.yVel;
-			// make the screen track the player
-			screenBoundX = Math.abs((this.xVel / (this.maxVel * 3))) * MAX_SCREEN_BOUND_X;
-			screenBoundY = Math.abs((this.yVel / (this.maxVel * 3))) * MAX_SCREEN_BOUND_Y;
-			if (this.x - screenX > screenBoundX) {
-				screenX = this.x - screenBoundX;
-			} else if (this.x - screenX < -screenBoundX) {
-				screenX = this.x + screenBoundX;
-			}
-			if (this.y - screenY > screenBoundY) {
-				screenY = this.y - screenBoundY;
-			} else if (this.y - screenY < -screenBoundY) {
-				screenY = this.y + screenBoundY;
-			}
+			trackScreenToEntity(this, this.maxSpeed * 3);
 			this.updateCollLines();
+		} else {
+			if (Math.abs(wrappedAngle - destAngle) > .4) {
+				if (wrappedAngle - destAngle > 0) {
+					this.angle -= this.turnSpeed * delta;
+				} else {
+					this.angle += this.turnSpeed * delta;
+				}
+			}
 		}
 		if (timeSince > this.warpDelay * 3) {
 			// new level setup
