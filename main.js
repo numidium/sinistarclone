@@ -294,9 +294,8 @@
 		var ret;
 		
 		if (subject.collLines.length > 0) {
-			// Start at 20 because the boss occupies 0-8, bombs occupy 9-18,
-			// and the player occupies 19.
-			for (entIndex = 20; entIndex < elu.entities.length; entIndex++) {
+			for (entIndex = 2 + elu.bossPieces.length + elu.bombs.length;
+					entIndex < elu.entities.length; entIndex++) {
 				other = elu.entities[entIndex];
 				if (!other.active || other == subject) {
 					continue;
@@ -437,6 +436,7 @@
 		throttle: false,
 		angleDelta: 0,
 		collLines: [],
+		collisionOn: true,
 		active: false,
         moveSelf: function (delta, elu) {
             var oldAngle;
@@ -448,7 +448,7 @@
             this.angle += this.angleDelta * delta;
             this.updateCollLines();
             // angular collision
-            if (checkCollision(this, elu)) {
+            if (this.collisionOn && checkCollision(this, elu)) {
                 this.angle = oldAngle;
                 this.updateCollLines();
             }
@@ -489,7 +489,7 @@
             }
             this.x += this.xVel * delta;
             this.y += this.yVel * delta;
-			other = checkCollision(this, elu);
+			other = (!this.collisionOn ? null : checkCollision(this, elu));
 			if (other) {
 				this.xVel = -this.xVel;
 				this.yVel = -this.yVel;
@@ -558,7 +558,7 @@
 	Player.prototype.lastDeath = 0;
 	Player.prototype.respawnDelay = 4000;
 	Player.prototype.lives = 2;
-	Player.prototype.bombs = 10;
+	Player.prototype.bombs = 0;
 	Player.prototype.MAX_BOMBS = 10;
 	Player.prototype.MAX_LIVES = 10;
 	Player.prototype.warpDelay = 3000;
@@ -760,6 +760,9 @@
 	Miner.prototype.hasCrystal = false;
 	Miner.prototype.avoiding = false;
 	Miner.prototype.turnSign = 1;
+	Miner.prototype.nearTarget = false;
+	Miner.prototype.lastStop = 0;
+	Miner.prototype.stopLength = 500;
 	Miner.prototype.nearDistance = 100;
 	Miner.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
@@ -772,6 +775,7 @@
 		// update target
 		if (this.hasCrystal && !elu.bossRef.alive && this.target != elu.bossRef) {
 			this.target = elu.bossRef;
+			this.nearTarget = false;
 		} else if (!this.target.active || distanceToTarget < minTargetDist ||
 					(this.target == elu.bossRef && elu.bossRef.alive)) {
 			this.target = getRandomIndex(elu.asteroids);
@@ -794,6 +798,9 @@
 				} else {
 					this.angle -= this.turnSpeed * delta;
 				}
+				if (this.avoiding) {
+					this.avoiding = false;
+				}
 			} else {
 				if (this.angle > angleToTarget) {
 					this.angle -= this.turnSpeed * delta;
@@ -806,15 +813,18 @@
 				this.avoiding = false;
 			}
 		}
+		// stop before going towards a small target
+		if ((this.target instanceof Crystal || this.target instanceof Boss) &&
+			!this.nearTarget &&
+			distance(this.x, this.y, this.target.x, this.target.y) < this.nearDistance) {
+			this.nearTarget = true;
+			this.lastStop = performance.now();
+			this.throttle = false;
+		} else if (this.nearTarget && performance.now() - this.lastStop >= this.stopLength) {
+			this.throttle = true;
+		}
 		if (this.moveSelf(delta, elu) instanceof Asteroid) {
 			this.lastBump = performance.now();
-		}
-		// accurately approach small targets
-		if ((this.target instanceof Crystal || this.target instanceof Boss) && 
-			distanceToTarget < this.nearDistance) {
-			this.xVel = this.yVel = 0;
-			this.x += 2 * Math.cos(angleToTarget + Math.PI / 2);
-			this.y += 2 * Math.sin(-angleToTarget - Math.PI / 2);
 		}
 		fieldWrap(this, elu.playerRef);
 	};
@@ -918,8 +928,20 @@
 		this.lastShotTime = performance.now();
 	};
 	Shooter.prototype.activate = function (elu) {
+		var miningShooters = 0;
+		var shooterInd;
+		
+		for (shooterInd = 0; shooterInd < elu.shooters.length; shooterInd++) {
+			if (elu.shooters[shooterInd].target instanceof Asteroid) {
+				miningShooters++;
+			}
+		}
+		if (miningShooters > 1) {
+			this.target = elu.playerRef;
+		} else {
+			this.target = getRandomIndex(elu.asteroids);
+		}
 		placeAwayFrom(elu.playerRef.x, elu.playerRef.y, this);
-		this.target = getRandomIndex(elu.asteroids);
 		this.foundPlayer = false;
 		this.shooting = false;
 		this.active = true;
@@ -1108,6 +1130,7 @@
 				collidingWith(this, elu.bossPieces[pieceInd])) {
 					if (elu.bossRef.alive) {
 						elu.bossPieces[pieceInd].kill(elu);
+						elu.playerRef.collisionOn = true;
 					}
 					this.active = false;
 					break;
@@ -1259,9 +1282,11 @@
 				}
 			} else if (this.target.active) {
 				// play the player death animation
+				this.target.collisionOn = false;
 				if (performance.now() - this.lastCaught > this.catchTime &&
 					distance(this.x, this.y, this.target.x, this.target.y) < 30) {
 						this.target.kill();
+						this.target.collisionOn = true;
 						return;
 				}
 				angleToMe = getAngleTo(this.target, this);
