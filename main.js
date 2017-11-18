@@ -161,7 +161,7 @@
 		document.onkeyup = keyUpHandler;
         entLookup.bossRef = new Boss();
         entLookup.entities.push(entLookup.bossRef);
-        for (index = 0; index < 8; index++) {
+        for (index = 0; index < 9; index++) {
             entLookup.entities.push(new BossPiece(index));
             entLookup.bossPieces[entLookup.bossPieces.length] = entLookup.entities[entLookup.entities.length - 1];
         }
@@ -762,7 +762,7 @@
 	Miner.prototype.turnSign = 1;
 	Miner.prototype.nearTarget = false;
 	Miner.prototype.lastStop = 0;
-	Miner.prototype.stopLength = 500;
+	Miner.prototype.stopLength = 700;
 	Miner.prototype.nearDistance = 100;
 	Miner.prototype.updateCollLines = function () {
 		updateTriangle(this.collLines, this.angle, this.collRadius);
@@ -988,7 +988,7 @@
 				return;
 			}
 		}
-		if (circleCollidingWith(this, elu.playerRef) && elu.playerRef.active) {
+		if (circleCollidingWith(this, elu.playerRef) && elu.playerRef.active && elu.bossRef.active) {
 			this.active = false;
 			elu.playerRef.kill(elu);
 		}
@@ -1064,23 +1064,8 @@
 		updateTriangle(this.collLines, this.angle, this.collRadius);
 	};
 	Bomb.prototype.activate = function (elu, x, y) {
-		var pieceInd;
-		var nearestDist = MAX_DISTANCE;
-		var nearestPiece = null;
-		var dist;
-		
 		this.birthTime = performance.now();
-		for (pieceInd = 0; pieceInd < elu.bossPieces.length; pieceInd++) {
-			if (elu.bossPieces[pieceInd].active) {
-				dist = distance(this.x, this.y, elu.bossPieces[pieceInd].x, elu.bossPieces[pieceInd].y);
-				if (dist < nearestDist) {
-					nearestDist = dist;
-					nearestPiece = elu.bossPieces[pieceInd];
-				}
-			}
-		}
-		// if we can't find an active piece then just go in the boss's general direction
-		this.target = nearestPiece || elu.bossRef;
+		this.target = elu.bossRef;
 		// immediately point at the target
 		this.angle = getAngleTo(this, this.target);
 		this.x = x;
@@ -1091,6 +1076,7 @@
 	Bomb.prototype.updateState = function (delta, elu) {
 		var other;
 		var pieceInd;
+		var nextInd;
 		
 		if (performance.now() - this.birthTime > this.lifeSpan) {
 			this.active = false;
@@ -1125,11 +1111,20 @@
 				other.kill(elu);
 				this.active = false;
 		}
-		for (pieceInd = 0; pieceInd < elu.bossPieces.length; pieceInd++) {
+		for (pieceInd = elu.bossPieces.length - 1; pieceInd >= 0; pieceInd--) {
 			if (elu.bossPieces[pieceInd].active &&
 				collidingWith(this, elu.bossPieces[pieceInd])) {
 					if (elu.bossRef.alive) {
-						elu.bossPieces[pieceInd].kill(elu);
+						if (elu.bossRef.activePieces == 1) {
+							elu.bossPieces[pieceInd].kill(elu);
+						} else {
+							for (nextInd = elu.bossPieces.length - 2; nextInd >= 0; nextInd--) {
+								if (elu.bossPieces[nextInd].active) {
+									elu.bossPieces[nextInd].kill(elu);
+									break;
+								}
+							}
+						}
 						elu.playerRef.collisionOn = true;
 					}
 					this.active = false;
@@ -1480,6 +1475,24 @@
 					Math.sin(-Math.PI * (7 / 4)) * Boss.prototype.collRadius,
 					Boss.prototype.collRadius,
 					0];
+				break;
+			case 8:
+				this.collLines = [Boss.prototype.collRadius / 2,
+					0,
+					Math.cos(Math.PI / 4) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI / 4) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI * (1 / 2)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (1 / 2)) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI * (3 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (3 / 4)) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI * (5 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (5 / 4)) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI * (3 / 2)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (3 / 2)) * Boss.prototype.collRadius / 2,
+					Math.cos(Math.PI * (7 / 4)) * Boss.prototype.collRadius / 2,
+					Math.sin(-Math.PI * (7 / 4)) * Boss.prototype.collRadius / 2];
 				break;
 			default:
 				break;
