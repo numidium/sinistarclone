@@ -47,18 +47,16 @@
                     entLookup.playerRef.throttle = true;
                     break;
                 case 37: // left
-                    entLookup.playerRef.angleDelta = .005;
+                    entLookup.playerRef.turningLeft = true;
                     break;
                 case 39: // right
-                    entLookup.playerRef.angleDelta = -.005;
+                    entLookup.playerRef.turningRight = true;
                     break;
                 case 32: // space
                     entLookup.playerRef.shooting = true;
 					break;
 				case 90: // Z
-					if (!entLookup.bossRef.caught) {
-						entLookup.playerRef.shootBomb(entLookup);
-					}
+					entLookup.playerRef.pendingBomb = true;
 					break;
                 default:
                     break;
@@ -70,8 +68,10 @@
                     entLookup.playerRef.throttle = false;
                     break;
                 case 37: // left
+					entLookup.playerRef.turningLeft = false;
+					break;
                 case 39: // right
-                    entLookup.playerRef.angleDelta = 0;
+                    entLookup.playerRef.turningRight = false;
                     break;
                 case 32: // space
                     entLookup.playerRef.shooting = false;
@@ -166,7 +166,7 @@
             entLookup.bossPieces[entLookup.bossPieces.length] = entLookup.entities[entLookup.entities.length - 1];
         }
 		entLookup.bombs = new Array();
-		for (index = 0; index < 10; index++) {
+		for (index = 0; index < 15; index++) {
 			entLookup.entities.push(new Bomb());
 			entLookup.bombs[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
@@ -549,6 +549,9 @@
 	Player.prototype.maxVel = .3;
 	Player.prototype.turnSpeed = .005;
 	Player.prototype.throttle = false;
+	Player.prototype.turningLeft = false;
+	Player.prototype.turningRight = false;
+	Player.prototype.pendingBomb = false;
 	Player.prototype.collRadius = 15;
 	Player.prototype.collLines = [];
 	Player.prototype.active = true;
@@ -559,7 +562,7 @@
 	Player.prototype.respawnDelay = 4000;
 	Player.prototype.lives = 2;
 	Player.prototype.bombs = 0;
-	Player.prototype.MAX_BOMBS = 10;
+	Player.prototype.MAX_BOMBS = 15;
 	Player.prototype.MAX_LIVES = 10;
 	Player.prototype.warpDelay = 3000;
 	Player.prototype.level = 0;
@@ -572,6 +575,19 @@
 			this.yVel = this.maxVel * 3;
 			this.warp(delta, elu);
 		} else {
+			if (this.turningLeft && this.turningRight) {
+				if (this.angleDelta == -this.turnSpeed) {
+					this.angleDelta = this.turnSpeed;
+				} else {
+					this.angleDelta = -this.turnSpeed;
+				}
+			} else if (this.turningLeft) {
+				this.angleDelta = this.turnSpeed;
+			} else if (this.turningRight) {
+				this.angleDelta = -this.turnSpeed;
+			} else {
+				this.angleDelta = 0;
+			}
 			this.moveSelf(delta, elu);
 			trackScreenToEntity(this, this.maxVel);
 		}
@@ -580,6 +596,9 @@
 			elu.playerBullets[elu.playerBulletInd].activate(this.x, this.y, this.angle + Math.PI / 2);
 			elu.playerBulletInd = (elu.playerBulletInd + 1) % elu.playerBullets.length;
 			this.lastShotTime = performance.now();
+		}
+		if (this.pendingBomb && !entLookup.bossRef.caught) {
+			entLookup.playerRef.shootBomb(entLookup);
 		}
 	};
 	Player.prototype.activate = function (elu) {
@@ -624,6 +643,7 @@
 			elu.bombInd = (elu.bombInd + 1) % elu.bombs.length;
 			this.bombs--;
 		}
+		this.pendingBomb = false;
 	};
 	Player.prototype.warp = function (delta, elu) {
 		var timeSince = performance.now() - elu.bossRef.timeOfDeath;
