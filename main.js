@@ -15,6 +15,9 @@
 	var screenBoundY;
 	var screenX;
 	var screenY;
+	const UP_KEY = 38;
+	const LEFT_KEY = 37;
+	const RIGHT_KEY = 39;
 	function startGame() {
 		// Setup
         var TIMESTEP = 10; // How finely the state is interpolated between frames. Higher = choppier.
@@ -43,14 +46,16 @@
 		var lifeSymbolLines = new Array(6);
         function keyDownHandler(e) {
             switch(e.keyCode) {
-                case 38: // up
+                case UP_KEY: // up
                     entLookup.playerRef.throttle = true;
                     break;
-                case 37: // left
+                case LEFT_KEY: // left
                     entLookup.playerRef.turningLeft = true;
+					entLookup.playerRef.lastTurnKey = e.keyCode;
                     break;
-                case 39: // right
+                case RIGHT_KEY: // right
                     entLookup.playerRef.turningRight = true;
+					entLookup.playerRef.lastTurnKey = e.keyCode;
                     break;
                 case 32: // space
                     entLookup.playerRef.shooting = true;
@@ -64,13 +69,13 @@
         };
         function keyUpHandler(e) {
             switch(e.keyCode) {
-                case 38: // up
+                case UP_KEY: // up
                     entLookup.playerRef.throttle = false;
                     break;
-                case 37: // left
+                case LEFT_KEY: // left
 					entLookup.playerRef.turningLeft = false;
 					break;
-                case 39: // right
+                case RIGHT_KEY: // right
                     entLookup.playerRef.turningRight = false;
                     break;
                 case 32: // space
@@ -551,6 +556,7 @@
 	Player.prototype.throttle = false;
 	Player.prototype.turningLeft = false;
 	Player.prototype.turningRight = false;
+	Player.prototype.lastTurnKey = 0;
 	Player.prototype.pendingBomb = false;
 	Player.prototype.collRadius = 15;
 	Player.prototype.collLines = [];
@@ -576,9 +582,9 @@
 			this.warp(delta, elu);
 		} else {
 			if (this.turningLeft && this.turningRight) {
-				if (this.angleDelta == -this.turnSpeed) {
+				if (this.lastTurnKey == LEFT_KEY) {
 					this.angleDelta = this.turnSpeed;
-				} else {
+				} else if (this.lastTurnKey == RIGHT_KEY) {
 					this.angleDelta = -this.turnSpeed;
 				}
 			} else if (this.turningLeft) {
@@ -597,8 +603,8 @@
 			elu.playerBulletInd = (elu.playerBulletInd + 1) % elu.playerBullets.length;
 			this.lastShotTime = performance.now();
 		}
-		if (this.pendingBomb && !entLookup.bossRef.caught) {
-			entLookup.playerRef.shootBomb(entLookup);
+		if (this.pendingBomb && !elu.bossRef.caught) {
+			elu.playerRef.shootBomb(elu);
 		}
 	};
 	Player.prototype.activate = function (elu) {
@@ -627,8 +633,7 @@
 		this.active = true;
 	};
 	Player.prototype.kill = function (elu) {
-		var shooterInd;
-		
+		this.pendingBomb = false;
 		this.active = false;
 		this.lastDeath = performance.now();
 	};
