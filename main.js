@@ -767,7 +767,7 @@
 			fill = "rgba(" + rChannel + "," + gbChannel + "," + gbChannel + ", 1)";
 		}
         drawPolygon(this.x, this.y, this.collLines, fill);
-    };
+	};
 	function Miner() {
 		this.collLines = new Array(6);
 		this.throttle = true;
@@ -845,7 +845,7 @@
 			this.nearTarget = true;
 			this.lastStop = performance.now();
 			this.throttle = false;
-		} else if (this.nearTarget && performance.now() - this.lastStop >= this.stopLength) {
+		} else if (performance.now() - this.lastStop >= this.stopLength) {
 			this.throttle = true;
 		}
 		if (this.moveSelf(delta, elu) instanceof Asteroid) {
