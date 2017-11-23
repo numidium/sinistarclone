@@ -194,7 +194,7 @@
 			entLookup.asteroids[index] = entRef;
         }
         entLookup.miners = new Array();
-        for (index = 0; index < 10; index++) {
+        for (index = 0; index < 15; index++) {
             entLookup.entities.push(new Miner());
             entLookup.miners.push(entLookup.entities[entLookup.entities.length - 1]);
 		}
@@ -204,7 +204,7 @@
 			entLookup.enemyBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
 		entLookup.shooters = new Array();
-		for (index = 0; index < 10; index++) {
+		for (index = 0; index < 15; index++) {
 			entLookup.entities.push(new Shooter());
 			entLookup.shooters.push(entLookup.entities[entLookup.entities.length - 1]);
 		}
@@ -1241,6 +1241,7 @@
 	Boss.prototype.maxChasing = 0;
 	Boss.prototype.lastShooterSpawn = 0;
 	Boss.prototype.shooterSpawnInterval = 7000;
+	Boss.prototype.chaseStartDelay = 7000;
 	Boss.prototype.nearDistance = 200;
 	Boss.prototype.catchDistance = 100;
 	Boss.prototype.isHurt = false;
@@ -1285,6 +1286,7 @@
 					this.isHurt = false;
 				}
 			} else if (!this.caught) {
+			    // chase the player
 				this.turnToTarget(delta);
 				if (distance(this.x, this.y, this.target.x, this.target.y) < this.nearDistance) {
 					// turn on a dime
@@ -1294,7 +1296,9 @@
 					this.accel = this.defaultAccel;
 					this.maxVel = this.defaultMaxVel;
 				}
-				this.moveSelf(delta, elu);
+				if (performance.now() - elu.playerRef.lastDeath > this.chaseStartDelay) {
+				    this.moveSelf(delta, elu);
+				}
 				if (this.target.active && 
 					distance(this.x, this.y, this.target.x, this.target.y) < this.catchDistance) {
 					this.caught = true;
@@ -1346,7 +1350,8 @@
 		}
 		// resurrect the player
 		if (!elu.playerRef.active) {
-			if (performance.now() - elu.playerRef.lastDeath >= elu.playerRef.respawnDelay) {
+		    if (performance.now() - elu.playerRef.lastDeath >= elu.playerRef.respawnDelay) {
+                // TODO: prevent softlock when both the boss and player are dead at the same time
 				elu.playerRef.activate(elu);
 				if (this.caught) {
 					this.caught = false;
@@ -1368,35 +1373,44 @@
 		}
 	};
 	Boss.prototype.activate = function (elu) {
-		// new level setup
-		var entInd;
+	    // new level setup
+	    const WORKER_ZONE = 1;
+	    const WARRIOR_ZONE = 2;
+	    const PLANETOID_ZONE = 3;
+	    const VOID_ZONE = 0;
+	    var entInd;
 		
 		for (entInd = 0; entInd < elu.miners.length; entInd++) {
 			elu.miners[entInd].hasCrystal = false;
 		}
 		if (elu.playerRef.level > 0) {
-			switch (elu.playerRef.level % 3) {
-				case 1:
-					elu.bossRef.maxMiners = elu.miners.length;
-					elu.bossRef.maxShooters = 5;
-					elu.bossRef.maxAsteroids = 20;
+			switch (elu.playerRef.level % 4) {
+				case WORKER_ZONE:
+					this.maxMiners = elu.miners.length;
+					this.maxShooters = 3;
+					this.maxAsteroids = 20;
 					break;
-				case 2:
-					elu.bossRef.maxMiners = 5;
-					elu.bossRef.maxShooters = elu.shooters.length;
-					elu.bossRef.maxAsteroids = 20;
+				case WARRIOR_ZONE:
+					this.maxMiners = 5;
+					this.maxShooters = elu.shooters.length;
+					this.maxAsteroids = 20;
 					break;
-				case 0:
-					elu.bossRef.maxMiners = 5;
-					elu.bossRef.maxShooters = 3;
-					elu.bossRef.maxAsteroids = elu.asteroids.length;
+			    case PLANETOID_ZONE:
+			        this.maxMiners = 5;
+			        this.maxShooters = 3;
+			        this.maxAsteroids = elu.asteroids.length;
+			        break;
+				case VOID_ZONE:
+					this.maxMiners = 5;
+					this.maxShooters = 5;
+					this.maxAsteroids = 7;
 					break;
 				default:
 					break;
 			}
 		}
 		for (entInd = 0; entInd < elu.miners.length; entInd++) {
-			if (entInd < elu.bossRef.maxMiners) {
+			if (entInd < this.maxMiners) {
 				elu.miners[entInd].activate(
 				elu.playerRef.x + (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
 				elu.playerRef.y + (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
@@ -1409,7 +1423,7 @@
 				elu.shooters[entInd].active = false;
 		}
 		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
-			if (entInd < elu.bossRef.maxAsteroids) {
+			if (entInd < this.maxAsteroids) {
 				elu.asteroids[entInd].active = true;
 			} else {
 				elu.asteroids[entInd].active = false;
