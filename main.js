@@ -372,10 +372,10 @@
 	function updateTriangle(vectors, angle, radius) {
 		vectors[0] = Math.cos(Math.PI / 2 + angle) * radius;
 		vectors[1] = Math.sin(-Math.PI / 2 - angle) * radius;
-		vectors[2] = (Math.cos(Math.PI * (4 / 3) + angle) * radius);
-		vectors[3] = (Math.sin(-Math.PI * (4 / 3) - angle) * radius);
-		vectors[4] = (Math.cos(Math.PI * (5 / 3) + angle) * radius);
-		vectors[5] = (Math.sin(-Math.PI * (5 / 3) - angle) * radius);
+		vectors[2] = Math.cos(Math.PI * (4 / 3) + angle) * radius;
+		vectors[3] = Math.sin(-Math.PI * (4 / 3) - angle) * radius;
+		vectors[4] = Math.cos(Math.PI * (5 / 3) + angle) * radius;
+		vectors[5] = Math.sin(-Math.PI * (5 / 3) - angle) * radius;
 	};
 	function drawCircle(x, y, r, fill) {
 		CTX.beginPath();
@@ -573,7 +573,38 @@
 	Player.prototype.warpDelay = 3000;
 	Player.prototype.level = 0;
 	Player.prototype.updateCollLines = function () {
-		updateTriangle(this.collLines, this.angle, this.collRadius);
+	    this.collLines[0] = Math.cos(1.6373644905707205 + this.angle) * 15.033296378372908;
+	    this.collLines[1] = Math.sin(-1.6373644905707205 - this.angle) * 15.033296378372908;
+	    this.collLines[2] = Math.cos(1.7975951748487824 + this.angle) * 13.341664064126334;
+	    this.collLines[3] = Math.sin(-1.7975951748487824 - this.angle) * 13.341664064126334;
+	    this.collLines[4] = Math.cos(2.5535900500422257 + this.angle) * 3.605551275463989;
+	    this.collLines[5] = Math.sin(-2.5535900500422257 - this.angle) * 3.605551275463989;
+	    this.collLines[6] = Math.cos(-2.5535900500422257 + this.angle) * 18.027756377319946;
+	    this.collLines[7] = Math.sin(2.5535900500422257 - this.angle) * 18.027756377319946;
+	    this.collLines[8] = Math.cos(-2.390663591191853 + this.angle) * 20.518284528683193;
+	    this.collLines[9] = Math.sin(2.390663591191853 - this.angle) * 20.518284528683193;
+	    this.collLines[10] = Math.cos(-2.321725389192837 + this.angle) * 20.518284528683193;
+	    this.collLines[11] = Math.sin(2.321725389192837 - this.angle) * 20.518284528683193;
+	    this.collLines[12] = Math.cos(-2.2455372690184494 + this.angle) * 19.209372712298546;
+	    this.collLines[13] = Math.sin(2.2455372690184494 - this.angle) * 19.209372712298546;
+	    this.collLines[14] = Math.cos(-2.0344439357957027 + this.angle) * 8.94427190999916;
+	    this.collLines[15] = Math.sin(2.0344439357957027 - this.angle) * 8.94427190999916;
+	    this.collLines[16] = Math.cos(-1.1071487177940904 + this.angle) * 8.94427190999916;
+	    this.collLines[17] = Math.sin(1.1071487177940904 - this.angle) * 8.94427190999916;
+	    this.collLines[18] = Math.cos(-0.8960553845713439 + this.angle) * 19.209372712298546;
+	    this.collLines[19] = Math.sin(0.8960553845713439 - this.angle) * 19.209372712298546;
+	    this.collLines[20] = Math.cos(-0.8198672643969563 + this.angle) * 20.518284528683193;
+	    this.collLines[21] = Math.sin(0.8198672643969563 - this.angle) * 20.518284528683193;
+	    this.collLines[22] = Math.cos(-0.7509290623979403 + this.angle) * 20.518284528683193;
+	    this.collLines[23] = Math.sin(0.7509290623979403 - this.angle) * 20.518284528683193;
+	    this.collLines[24] = Math.cos(-0.5880026035475675 + this.angle) * 18.027756377319946;
+	    this.collLines[25] = Math.sin(0.5880026035475675 - this.angle) * 18.027756377319946;
+	    this.collLines[26] = Math.cos(0.5880026035475675 + this.angle) * 3.605551275463989;
+	    this.collLines[27] = Math.sin(-0.5880026035475675 - this.angle) * 3.605551275463989;
+	    this.collLines[28] = Math.cos(1.3439974787410107 + this.angle) * 13.341664064126334;
+	    this.collLines[29] = Math.sin(-1.3439974787410107 - this.angle) * 13.341664064126334;
+	    this.collLines[30] = Math.cos(1.5042281630190728 + this.angle) * 15.033296378372908;
+	    this.collLines[31] = Math.sin(-1.5042281630190728 - this.angle) * 15.033296378372908;
 	};
 	Player.prototype.updateState = function (delta, elu) {
 		if (!elu.bossRef.active) {
