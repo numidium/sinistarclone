@@ -2,25 +2,25 @@
 	"use strict";
     var CANVAS = document.getElementById('gameCanvas');
     var CTX = CANVAS.getContext('2d');
-	var HUD_HEIGHT = 80;
-	var MINIMAP_SCALE = 30;
-	var MAX_DISTANCE = 1500;
-	var MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolating
-    var MINER_RADIUS = 14;
-    var SHOOTER_RADIUS = 17;
-	var BOSS_RADIUS = 100;
-	var MAX_SCREEN_BOUND_X = 100;
-	var MAX_SCREEN_BOUND_Y = 50;
-	var screenBoundX;
-	var screenBoundY;
-	var screenX;
-	var screenY;
+    var screenBoundX;
+    var screenBoundY;
+    var screenX;
+    var screenY;
+	const HUD_HEIGHT = 80;
+	const MINIMAP_SCALE = 30;
+	const MAX_DISTANCE = 1500;
+	const MAX_TIME_DELTA = 1000; // less than 1 fps is not worth interpolating
+    const MINER_RADIUS = 14;
+    const SHOOTER_RADIUS = 17;
+	const BOSS_RADIUS = 100;
+	const MAX_SCREEN_BOUND_X = 100;
+	const MAX_SCREEN_BOUND_Y = 50;
 	const UP_KEY = 38;
 	const LEFT_KEY = 37;
 	const RIGHT_KEY = 39;
 	function startGame() {
 		// Setup
-        var TIMESTEP = 10; // How finely the state is interpolated between frames. Higher = choppier.
+        const TIMESTEP = 10; // How finely the state is interpolated between frames. Higher = choppier.
         var lastFrameTimestamp = 0;
         var timeDelta = 0;
         var mmLeft = CANVAS.width / 2 - HUD_HEIGHT / 2;
@@ -145,14 +145,14 @@
 			}
 			// Draw bomb count
 			for (entIndex = 0; entIndex < entLookup.playerRef.bombs; entIndex++) {
-				drawCircle(20 + entIndex * 10 - (CANVAS.width / 2), -(CANVAS.height / 2), Crystal.prototype.collRadius, "#5555FF");
+				drawCircle(20 + entIndex * 10 - (CANVAS.width / 2), -(CANVAS.height / 2 - 20), Crystal.prototype.collRadius, "#5555FF");
 			}
 			// Draw lives
 			for (entIndex = 0; entIndex < entLookup.playerRef.lives; entIndex++) {
 				CTX.beginPath();
-				CTX.moveTo(20 + (entIndex * 10) + lifeSymbolLines[0], 25 + lifeSymbolLines[1]);
+				CTX.moveTo(30 + (entIndex * 35) + lifeSymbolLines[0], 25 + lifeSymbolLines[1]);
 				for (index = 2; index < lifeSymbolLines.length - 1; index += 2) {
-					CTX.lineTo(20 + (entIndex * 10) + lifeSymbolLines[index], 25 + lifeSymbolLines[index + 1]);
+					CTX.lineTo(30 + (entIndex * 35) + lifeSymbolLines[index], 25 + lifeSymbolLines[index + 1]);
 				}
 				CTX.lineTo(20 + (entIndex * 10) + lifeSymbolLines[0], 25 + lifeSymbolLines[1]);
 				CTX.fillStyle = "#00FF00";
@@ -161,7 +161,7 @@
 			requestAnimationFrame(mainLoop);
 		};
 		
-		updateTriangle(lifeSymbolLines, 0, 7);
+		Player.prototype.updateShape(lifeSymbolLines, 0);
         document.onkeydown = keyDownHandler;
 		document.onkeyup = keyUpHandler;
         entLookup.bossRef = new Boss();
@@ -573,38 +573,7 @@
 	Player.prototype.warpDelay = 3000;
 	Player.prototype.level = 0;
 	Player.prototype.updateCollLines = function () {
-	    this.collLines[0] = Math.cos(1.6373644905707205 + this.angle) * 15.033296378372908;
-	    this.collLines[1] = Math.sin(-1.6373644905707205 - this.angle) * 15.033296378372908;
-	    this.collLines[2] = Math.cos(1.7975951748487824 + this.angle) * 13.341664064126334;
-	    this.collLines[3] = Math.sin(-1.7975951748487824 - this.angle) * 13.341664064126334;
-	    this.collLines[4] = Math.cos(2.5535900500422257 + this.angle) * 3.605551275463989;
-	    this.collLines[5] = Math.sin(-2.5535900500422257 - this.angle) * 3.605551275463989;
-	    this.collLines[6] = Math.cos(-2.5535900500422257 + this.angle) * 18.027756377319946;
-	    this.collLines[7] = Math.sin(2.5535900500422257 - this.angle) * 18.027756377319946;
-	    this.collLines[8] = Math.cos(-2.390663591191853 + this.angle) * 20.518284528683193;
-	    this.collLines[9] = Math.sin(2.390663591191853 - this.angle) * 20.518284528683193;
-	    this.collLines[10] = Math.cos(-2.321725389192837 + this.angle) * 20.518284528683193;
-	    this.collLines[11] = Math.sin(2.321725389192837 - this.angle) * 20.518284528683193;
-	    this.collLines[12] = Math.cos(-2.2455372690184494 + this.angle) * 19.209372712298546;
-	    this.collLines[13] = Math.sin(2.2455372690184494 - this.angle) * 19.209372712298546;
-	    this.collLines[14] = Math.cos(-2.0344439357957027 + this.angle) * 8.94427190999916;
-	    this.collLines[15] = Math.sin(2.0344439357957027 - this.angle) * 8.94427190999916;
-	    this.collLines[16] = Math.cos(-1.1071487177940904 + this.angle) * 8.94427190999916;
-	    this.collLines[17] = Math.sin(1.1071487177940904 - this.angle) * 8.94427190999916;
-	    this.collLines[18] = Math.cos(-0.8960553845713439 + this.angle) * 19.209372712298546;
-	    this.collLines[19] = Math.sin(0.8960553845713439 - this.angle) * 19.209372712298546;
-	    this.collLines[20] = Math.cos(-0.8198672643969563 + this.angle) * 20.518284528683193;
-	    this.collLines[21] = Math.sin(0.8198672643969563 - this.angle) * 20.518284528683193;
-	    this.collLines[22] = Math.cos(-0.7509290623979403 + this.angle) * 20.518284528683193;
-	    this.collLines[23] = Math.sin(0.7509290623979403 - this.angle) * 20.518284528683193;
-	    this.collLines[24] = Math.cos(-0.5880026035475675 + this.angle) * 18.027756377319946;
-	    this.collLines[25] = Math.sin(0.5880026035475675 - this.angle) * 18.027756377319946;
-	    this.collLines[26] = Math.cos(0.5880026035475675 + this.angle) * 3.605551275463989;
-	    this.collLines[27] = Math.sin(-0.5880026035475675 - this.angle) * 3.605551275463989;
-	    this.collLines[28] = Math.cos(1.3439974787410107 + this.angle) * 13.341664064126334;
-	    this.collLines[29] = Math.sin(-1.3439974787410107 - this.angle) * 13.341664064126334;
-	    this.collLines[30] = Math.cos(1.5042281630190728 + this.angle) * 15.033296378372908;
-	    this.collLines[31] = Math.sin(-1.5042281630190728 - this.angle) * 15.033296378372908;
+	    this.updateShape(this.collLines, this.angle);
 	};
 	Player.prototype.updateState = function (delta, elu) {
 		if (!elu.bossRef.active) {
@@ -712,6 +681,40 @@
 			elu.bossRef.activate(elu);
 		}
 	};
+	Player.prototype.updateShape = function (lines, angle) {
+	    lines[0] = Math.cos(1.6373644905707205 + angle) * 15.033296378372908;
+	    lines[1] = Math.sin(-1.6373644905707205 - angle) * 15.033296378372908;
+	    lines[2] = Math.cos(1.7975951748487824 + angle) * 13.341664064126334;
+	    lines[3] = Math.sin(-1.7975951748487824 - angle) * 13.341664064126334;
+	    lines[4] = Math.cos(2.5535900500422257 + angle) * 3.605551275463989;
+	    lines[5] = Math.sin(-2.5535900500422257 - angle) * 3.605551275463989;
+	    lines[6] = Math.cos(-2.5535900500422257 + angle) * 18.027756377319946;
+	    lines[7] = Math.sin(2.5535900500422257 - angle) * 18.027756377319946;
+	    lines[8] = Math.cos(-2.390663591191853 + angle) * 20.518284528683193;
+	    lines[9] = Math.sin(2.390663591191853 - angle) * 20.518284528683193;
+	    lines[10] = Math.cos(-2.321725389192837 + angle) * 20.518284528683193;
+	    lines[11] = Math.sin(2.321725389192837 - angle) * 20.518284528683193;
+	    lines[12] = Math.cos(-2.2455372690184494 + angle) * 19.209372712298546;
+	    lines[13] = Math.sin(2.2455372690184494 - angle) * 19.209372712298546;
+	    lines[14] = Math.cos(-2.0344439357957027 + angle) * 8.94427190999916;
+	    lines[15] = Math.sin(2.0344439357957027 - angle) * 8.94427190999916;
+	    lines[16] = Math.cos(-1.1071487177940904 + angle) * 8.94427190999916;
+	    lines[17] = Math.sin(1.1071487177940904 - angle) * 8.94427190999916;
+	    lines[18] = Math.cos(-0.8960553845713439 + angle) * 19.209372712298546;
+	    lines[19] = Math.sin(0.8960553845713439 - angle) * 19.209372712298546;
+	    lines[20] = Math.cos(-0.8198672643969563 + angle) * 20.518284528683193;
+	    lines[21] = Math.sin(0.8198672643969563 - angle) * 20.518284528683193;
+	    lines[22] = Math.cos(-0.7509290623979403 + angle) * 20.518284528683193;
+	    lines[23] = Math.sin(0.7509290623979403 - angle) * 20.518284528683193;
+	    lines[24] = Math.cos(-0.5880026035475675 + angle) * 18.027756377319946;
+	    lines[25] = Math.sin(0.5880026035475675 - angle) * 18.027756377319946;
+	    lines[26] = Math.cos(0.5880026035475675 + angle) * 3.605551275463989;
+	    lines[27] = Math.sin(-0.5880026035475675 - angle) * 3.605551275463989;
+	    lines[28] = Math.cos(1.3439974787410107 + angle) * 13.341664064126334;
+	    lines[29] = Math.sin(-1.3439974787410107 - angle) * 13.341664064126334;
+	    lines[30] = Math.cos(1.5042281630190728 + angle) * 15.033296378372908;
+	    lines[31] = Math.sin(-1.5042281630190728 - angle) * 15.033296378372908;
+	};
 	Player.prototype.draw = function () {
 		drawPolygon(this.x, this.y, this.collLines, "#00FF00");
 	};
@@ -800,7 +803,7 @@
         drawPolygon(this.x, this.y, this.collLines, fill);
 	};
 	function Miner() {
-		this.collLines = new Array(6);
+		this.collLines = new Array(22);
 		this.throttle = true;
 	};
     Miner.prototype = Object.create(Entity.prototype);
@@ -821,7 +824,30 @@
 	Miner.prototype.stopLength = 700;
 	Miner.prototype.nearDistance = 100;
 	Miner.prototype.updateCollLines = function () {
-		updateTriangle(this.collLines, this.angle, this.collRadius);
+	    this.collLines[0] = Math.cos(1.9513027039072615 + this.angle) * 5.385164807134504;
+	    this.collLines[1] = Math.sin(-1.9513027039072615 - this.angle) * 5.385164807134504;
+	    this.collLines[2] = Math.cos(1.7359450042095235 + this.angle) * 12.165525060596439;
+	    this.collLines[3] = Math.sin(-1.7359450042095235 - this.angle) * 12.165525060596439;
+	    this.collLines[4] = Math.cos(1.892546881191539 + this.angle) * 12.649110640673518;
+	    this.collLines[5] = Math.sin(-1.892546881191539 - this.angle) * 12.649110640673518;
+	    this.collLines[6] = Math.cos(2.0344439357957027 + this.angle) * 8.94427190999916;
+	    this.collLines[7] = Math.sin(-2.0344439357957027 - this.angle) * 8.94427190999916;
+	    this.collLines[8] = Math.cos(-2.5535900500422257 + this.angle) * 10.816653826391969;
+	    this.collLines[9] = Math.sin(2.5535900500422257 - this.angle) * 10.816653826391969;
+	    this.collLines[10] = Math.cos(-1.8157749899217608 + this.angle) * 12.36931687685298;
+	    this.collLines[11] = Math.sin(1.8157749899217608 - this.angle) * 12.36931687685298;
+	    this.collLines[12] = Math.cos(-1.3258176636680326 + this.angle) * 12.36931687685298;
+	    this.collLines[13] = Math.sin(1.3258176636680326 - this.angle) * 12.36931687685298;
+	    this.collLines[14] = Math.cos(-0.5880026035475675 + this.angle) * 10.816653826391969;
+	    this.collLines[15] = Math.sin(0.5880026035475675 - this.angle) * 10.816653826391969;
+	    this.collLines[16] = Math.cos(1.1071487177940904 + this.angle) * 8.94427190999916;
+	    this.collLines[17] = Math.sin(-1.1071487177940904 - this.angle) * 8.94427190999916;
+	    this.collLines[18] = Math.cos(1.2490457723982544 + this.angle) * 12.649110640673518;
+	    this.collLines[19] = Math.sin(-1.2490457723982544 - this.angle) * 12.649110640673518;
+	    this.collLines[20] = Math.cos(1.4056476493802699 + this.angle) * 12.165525060596439;
+	    this.collLines[21] = Math.sin(-1.4056476493802699 - this.angle) * 12.165525060596439;
+	    this.collLines[22] = Math.cos(1.1902899496825317 + this.angle) * 5.385164807134504;
+	    this.collLines[23] = Math.sin(-1.1902899496825317 - this.angle) * 5.385164807134504;
 	};
 	Miner.prototype.updateState = function (delta, elu) {
 		var angleToTarget = 0;
