@@ -674,6 +674,9 @@
 					this.angle += this.turnSpeed * delta;
 				}
 			}
+			if (Math.abs(this.angle - destAngle) <= this.turnSpeed + .05) {
+			    this.angle = destAngle;
+			}
 		}
 		this.updateCollLines();
 		if (timeSince > this.warpDelay * 3) {
