@@ -428,6 +428,26 @@
 			screenY = self.y + screenBoundY;
 		}
 	};
+	function assignMinerToCrystal(elu, crysRef) {
+	    var miner;
+	    var minerInd;
+	    var startInd = 0;
+
+	    miner = elu.miners[0];
+	    while (elu.miners[startInd++].hasCrystal && startInd < elu.miners.length) {
+	        miner = elu.miners[startInd];
+	    }
+	    for (minerInd = 1; minerInd < elu.miners.length; minerInd++) {
+	        if (elu.miners[minerInd].active &&
+				!(elu.miners[minerInd].target instanceof Crystal) &&
+				!elu.miners[minerInd].hasCrystal &&
+				distance(crysRef.x, crysRef.y, elu.miners[minerInd].x, elu.miners[minerInd].y) <
+					distance(crysRef.x, crysRef.y, miner.x, miner.y)) {
+	            miner = elu.miners[minerInd];
+	        }
+	    }
+	    miner.target = crysRef;
+	};
     // Objects
 	function Entity() {};
 	Entity.prototype = {
@@ -920,11 +940,15 @@
 		this.active = true;
 	};
 	Miner.prototype.kill = function (elu) {
-		if (this.hasCrystal) {
+	    if (this.hasCrystal) {
+	        this.active = false;
 			elu.crystals[elu.crystalInd].activate(this.x, this.y, this.angle + Math.PI / 2, elu);
 			elu.crystalInd = (elu.crystalInd + 1) % elu.crystals.length;
-		}
-		this.hasCrystal = false;
+			this.active = true;
+			this.hasCrystal = false;
+	    } else if (this.target instanceof Crystal) {
+	        assignMinerToCrystal(elu, this.target);
+	    }
 		this.target = getRandomIndex(elu.asteroids);
 		this.throttle = true;
 		kill(this);
@@ -1228,25 +1252,12 @@
 	Crystal.prototype.birthTime = 0;
 	Crystal.prototype.lifeSpan = 10000;
 	Crystal.prototype.activate = function (x, y, dir, elu) {
-		var minerInd;
-		var miner;
-		
-		this.birthTime = performance.now();
-		this.x = x;
-		this.y = y;
-		this.xVel = Math.cos(dir) * this.maxVel;
-		this.yVel = Math.sin(-dir) * this.maxVel;
-		miner = elu.miners[0];
-		for (minerInd = 1; minerInd < elu.miners.length; minerInd++) {
-			if (elu.miners[minerInd].active &&
-				!(elu.miners[minerInd].target instanceof Crystal) &&
-				!elu.miners[minerInd].hasCrystal &&
-				distance(this.x, this.y, elu.miners[minerInd].x, elu.miners[minerInd].y) < 
-					distance(this.x, this.y, miner.x, miner.y)) {
-				miner = elu.miners[minerInd];
-			}
-		}
-		miner.target = this;
+	    this.birthTime = performance.now();
+	    this.x = x;
+	    this.y = y;
+	    this.xVel = Math.cos(dir) * this.maxVel;
+	    this.yVel = Math.sin(-dir) * this.maxVel;
+	    assignMinerToCrystal(elu, this);
 		this.active = true;
 	};
 	Crystal.prototype.updateState = function (delta, elu) {
