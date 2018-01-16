@@ -653,9 +653,14 @@
 		this.active = true;
 	};
 	Player.prototype.kill = function (elu) {
+	    var bombInd;
+
 		this.pendingBomb = false;
 		this.active = false;
 		this.lastDeath = performance.now();
+		for (bombInd = 0; bombInd < elu.bombs.length; bombInd++) {
+		    elu.bombs[bombInd].active = false;
+		}
 	};
 	Player.prototype.addBomb = function () {
 		if (this.bombs < this.MAX_BOMBS) {
@@ -1224,7 +1229,8 @@
 			if (elu.bossPieces[pieceInd].active &&
 				collidingWith(this, elu.bossPieces[pieceInd])) {
 					if (elu.bossRef.alive) {
-						if (elu.bossRef.activePieces == 1) {
+					    if (pieceInd < elu.bossPieces.length - 1 ||
+                            (pieceInd == elu.bossPieces.length - 1 && elu.bossRef.activePieces == 1)) {
 							elu.bossPieces[pieceInd].kill(elu);
 						} else {
 							for (nextInd = elu.bossPieces.length - 2; nextInd >= 0; nextInd--) {
@@ -1380,7 +1386,7 @@
 				this.target.collisionOn = false;
 				if (performance.now() - this.lastCaught > this.catchTime &&
 					distance(this.x, this.y, this.target.x, this.target.y) < 30) {
-						this.target.kill();
+						this.target.kill(elu);
 						this.target.collisionOn = true;
 						return;
 				}
@@ -1422,7 +1428,6 @@
 		// resurrect the player
 		if (!elu.playerRef.active) {
 		    if (performance.now() - elu.playerRef.lastDeath >= elu.playerRef.respawnDelay) {
-                // TODO: prevent softlock when both the boss and player are dead at the same time
 				elu.playerRef.activate(elu);
 				if (this.caught) {
 					this.caught = false;
@@ -1437,7 +1442,6 @@
 			this.alive = false;
 			this.active = false;
 			this.caught = false;
-			
 		} else {
 			this.lastHurt = performance.now();
 			this.isHurt = true;
