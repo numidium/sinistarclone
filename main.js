@@ -6,6 +6,11 @@
     var screenBoundY;
     var screenX;
     var screenY;
+    var statusText = "";
+    var lastStatus = 0;
+    var statusTimeout = 4000;
+    var statusColor = "#00FFFF";
+    var score = 0;
 	const HUD_HEIGHT = 80;
 	const MINIMAP_SCALE = 30;
 	const MAX_DISTANCE = 1500;
@@ -118,13 +123,18 @@
 			CTX.fillRect(0, 0, CANVAS.width, HUD_HEIGHT);
 			CTX.fillStyle = "#000040";
 			CTX.fillRect(mmLeft, 0, 80, 80);
+		    // visible distance rectangle
 			CTX.beginPath();
 			CTX.strokeStyle = "#FFFF00";
-			// visible distance rectangle
 			CTX.rect(mmLeft + HUD_HEIGHT / 2 - (plrRef.x - screenX + CANVAS.width / 2) / MINIMAP_SCALE,
 				HUD_HEIGHT / 2 - (plrRef.y - screenY + (CANVAS.height - HUD_HEIGHT) / 2) / MINIMAP_SCALE,
 				CANVAS.width / MINIMAP_SCALE,
 				(CANVAS.height - HUD_HEIGHT) / MINIMAP_SCALE);
+			CTX.stroke();
+		    // status outline
+			CTX.beginPath();
+			CTX.strokeStyle = statusColor;
+			CTX.rect(0, 0, CANVAS.width, HUD_HEIGHT);
 			CTX.stroke();
 			// Draw minimap blips
 			for (entIndex = 0; entIndex < entLookup.entities.length; entIndex++) {
@@ -158,6 +168,21 @@
 				CTX.fillStyle = "#00FF00";
 				CTX.fill();
 			}
+		    // Draw status text
+			if (statusText) {
+			    CTX.fillStyle = "#FFFF00";
+			    CTX.textAlign = "center";
+			    CTX.font = "30px Impact";
+			    CTX.fillText(statusText, CANVAS.width / 2, CANVAS.height / 2);
+			    if (performance.now() - lastStatus > statusTimeout) {
+			        statusText = "";
+			    }
+			}
+		    // Draw score
+			CTX.fillStyle = "#FFFFFF";
+			CTX.textAlign = "left";
+			CTX.font = "10px Courier New";
+			CTX.fillText(score.toString().padStart(7, "0"), 17, 75);
 			requestAnimationFrame(mainLoop);
 		};
 		
@@ -218,6 +243,7 @@
 			entLookup.entities.push(new PlayerBullet());
 			entLookup.playerBullets[index] = entLookup.entities[entLookup.entities.length - 1];
 		}
+		score = 0;
 		entLookup.bossRef.activate(entLookup);
 		requestAnimationFrame(mainLoop); // Begin loop
     };
@@ -447,6 +473,10 @@
 	        }
 	    }
 	    miner.target = crysRef;
+	};
+	function updateStatus(text) {
+	    statusText = text;
+	    lastStatus = performance.now();
 	};
     // Objects
 	function Entity() {};
@@ -830,6 +860,7 @@
 		}
         drawPolygon(this.x, this.y, this.collLines, fill);
 	};
+    // TODO: make miners stop circling around nothing (likely invisible asteroids)
 	function Miner() {
 		this.collLines = new Array(22);
 		this.throttle = true;
@@ -1138,21 +1169,23 @@
 		this.y += this.yVel * delta;
 		for (entInd = 0; entInd < elu.asteroids.length; entInd++) {
 			if (elu.asteroids[entInd].active && circleCollidingWith(this, elu.asteroids[entInd])) {
-				elu.asteroids[entInd].heatUp(1, elu);
+			    elu.asteroids[entInd].heatUp(1, elu);
 				this.active = false;
 				return;
 			}
 		}
 		for (entInd = 0; entInd < elu.miners.length; entInd++) {
 			if (elu.miners[entInd].active && circleCollidingWith(this, elu.miners[entInd])) {
-				elu.miners[entInd].kill(elu);
+			    elu.miners[entInd].kill(elu);
+			    score += 1;
 				this.active = false;
 				return;
 			}
 		}
 		for (entInd = 0; entInd < elu.shooters.length; entInd++) {
 			if (elu.shooters[entInd].active && circleCollidingWith(this, elu.shooters[entInd])) {
-				elu.shooters[entInd].kill(elu);
+			    elu.shooters[entInd].kill(elu);
+			    score += 5;
 				this.active = false;
 				return;
 			}
@@ -1235,7 +1268,8 @@
 						} else {
 							for (nextInd = elu.bossPieces.length - 2; nextInd >= 0; nextInd--) {
 								if (elu.bossPieces[nextInd].active) {
-									elu.bossPieces[nextInd].kill(elu);
+								    elu.bossPieces[nextInd].kill(elu);
+								    score += 100;
 									break;
 								}
 							}
@@ -1343,7 +1377,8 @@
 				if (distance(this.x, this.y, miner.x, miner.y) < 25 && miner.hasCrystal) {
 					this.activePieces++;
 					if (this.activePieces == elu.bossPieces.length) {
-						this.alive = true;
+					    this.alive = true;
+					    statusColor = "#FF0000";
 					}
 					elu.bossPieces[this.activePieces - 1].active = true;
 					miner.hasCrystal = false;
@@ -1442,6 +1477,8 @@
 			this.alive = false;
 			this.active = false;
 			this.caught = false;
+			score += 1000;
+			statusColor = "#00FFFF";
 		} else {
 			this.lastHurt = performance.now();
 			this.isHurt = true;
@@ -1464,21 +1501,25 @@
 					this.maxMiners = elu.miners.length;
 					this.maxShooters = 3;
 					this.maxAsteroids = 20;
+					updateStatus("Arrived at Worker Zone");
 					break;
 				case WARRIOR_ZONE:
 					this.maxMiners = 5;
 					this.maxShooters = elu.shooters.length;
 					this.maxAsteroids = 20;
+					updateStatus("Arrived at Warrior Zone");
 					break;
 			    case PLANETOID_ZONE:
 			        this.maxMiners = 5;
 			        this.maxShooters = 3;
 			        this.maxAsteroids = elu.asteroids.length;
+			        updateStatus("Arrived at Planetoid Zone");
 			        break;
 				case VOID_ZONE:
 					this.maxMiners = 5;
 					this.maxShooters = 5;
 					this.maxAsteroids = 7;
+					updateStatus("Arrived at Void Zone");
 					break;
 				default:
 					break;
