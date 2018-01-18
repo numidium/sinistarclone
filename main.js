@@ -340,8 +340,8 @@
 		
 		return null;
 	};
-    function getRandomIndex(arr) {
-        return arr[Math.round(Math.random() * (arr.length - 1))];
+    function getRandomIndex(arr, length) {
+        return arr[Math.round(Math.random() * (length - 1))];
     };
 	function wrapAngle(angle) {
 		if (angle > 2 * Math.PI) {
@@ -367,14 +367,14 @@
 	};
 	function fieldWrap(ent, playerRef) {
 		if (ent.x - playerRef.x > MAX_DISTANCE) {
-			ent.x = playerRef.x - MAX_DISTANCE + 2;
+			ent.x = playerRef.x - MAX_DISTANCE + 10;
 		} else if (ent.x - playerRef.x < -MAX_DISTANCE) {
-			ent.x = playerRef.x + MAX_DISTANCE - 2;
+			ent.x = playerRef.x + MAX_DISTANCE - 10;
 		}
 		if (ent.y - playerRef.y > MAX_DISTANCE) {
-			ent.y = playerRef.y - MAX_DISTANCE + 2;
+			ent.y = playerRef.y - MAX_DISTANCE + 10;
 		} else if (ent.y - playerRef.y < -MAX_DISTANCE) {
-			ent.y = playerRef.y + MAX_DISTANCE - 2;
+			ent.y = playerRef.y + MAX_DISTANCE - 10;
 		}
 	};
 	function translateToOrigin(ent) {
@@ -498,6 +498,7 @@
             var velSign;
             var other;
             var angleToOther;
+            var iterations = 0;
             
             oldAngle = this.angle;
             this.angle += this.angleDelta * delta;
@@ -567,7 +568,7 @@
 					angleToOther = getAngleTo(other, this);
 					this.x += Math.abs(this.xVel) * Math.cos(angleToOther + Math.PI / 2) * delta;
 					this.y -= Math.abs(this.yVel) * Math.sin(angleToOther + Math.PI / 2) * delta;
-				} while (collidingWith(this, other));
+				} while (collidingWith(this, other) && ++iterations < 100);
 				
 				return other;
 			}
@@ -776,6 +777,7 @@
 	Player.prototype.draw = function () {
 		drawPolygon(this.x, this.y, this.collLines, "#00FF00");
 	};
+    // TODO: fix asteroids clumping on the bottom right when entering planetoid zone
     function Asteroid(x, y) {
         var pointInd;
         var angle;
@@ -860,7 +862,6 @@
 		}
         drawPolygon(this.x, this.y, this.collLines, fill);
 	};
-    // TODO: make miners stop circling around nothing (likely invisible asteroids)
 	function Miner() {
 		this.collLines = new Array(22);
 		this.throttle = true;
@@ -919,7 +920,7 @@
 			this.nearTarget = false;
 		} else if (!this.target.active || distanceToTarget < minTargetDist ||
 					(this.target == elu.bossRef && elu.bossRef.alive)) {
-			this.target = getRandomIndex(elu.asteroids);
+			this.target = getRandomIndex(elu.asteroids, elu.bossRef.maxAsteroids);
 		}
 		// movement
 		this.angle = wrapAngle(this.angle);
@@ -972,7 +973,7 @@
 	Miner.prototype.activate = function (x, y, elu) {
 		this.x = x;
 		this.y = y;
-		this.target = getRandomIndex(elu.asteroids);
+		this.target = getRandomIndex(elu.asteroids, elu.bossRef.maxAsteroids);
 		this.active = true;
 	};
 	Miner.prototype.kill = function (elu) {
@@ -985,7 +986,7 @@
 	    } else if (this.target instanceof Crystal) {
 	        assignMinerToCrystal(elu, this.target);
 	    }
-		this.target = getRandomIndex(elu.asteroids);
+		this.target = getRandomIndex(elu.asteroids, elu.bossRef.maxAsteroids);
 		this.throttle = true;
 		kill(this);
 	};
@@ -1084,7 +1085,7 @@
 		if (miningShooters > 1) {
 			this.target = elu.playerRef;
 		} else {
-			this.target = getRandomIndex(elu.asteroids);
+			this.target = getRandomIndex(elu.asteroids, elu.bossRef.maxAsteroids);
 		}
 		placeAwayFrom(elu.playerRef.x, elu.playerRef.y, this);
 		this.foundPlayer = false;
@@ -1501,25 +1502,25 @@
 					this.maxMiners = elu.miners.length;
 					this.maxShooters = 3;
 					this.maxAsteroids = 20;
-					updateStatus("Arrived at Worker Zone");
+					updateStatus("Worker Zone");
 					break;
 				case WARRIOR_ZONE:
 					this.maxMiners = 5;
 					this.maxShooters = elu.shooters.length;
 					this.maxAsteroids = 20;
-					updateStatus("Arrived at Warrior Zone");
+					updateStatus("Warrior Zone");
 					break;
 			    case PLANETOID_ZONE:
 			        this.maxMiners = 5;
 			        this.maxShooters = 3;
 			        this.maxAsteroids = elu.asteroids.length;
-			        updateStatus("Arrived at Planetoid Zone");
+			        updateStatus("Planetoid Zone");
 			        break;
 				case VOID_ZONE:
 					this.maxMiners = 5;
 					this.maxShooters = 5;
 					this.maxAsteroids = 7;
-					updateStatus("Arrived at Void Zone");
+					updateStatus("Void Zone");
 					break;
 				default:
 					break;
@@ -1528,8 +1529,8 @@
 		for (entInd = 0; entInd < elu.miners.length; entInd++) {
 			if (entInd < this.maxMiners) {
 				elu.miners[entInd].activate(
-				elu.playerRef.x + (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
-				elu.playerRef.y + (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 200,
+				elu.playerRef.x + (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 400,
+				elu.playerRef.y + (Math.random() >= .5 ? 1 : -1) * Math.random() * (MAX_DISTANCE - 300) + 400,
 				elu);
 			} else {
 				elu.miners[entInd].active = false;
